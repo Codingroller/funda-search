@@ -1,7 +1,7 @@
 """CBS StatLine OData v4 — Kerncijfers wijken en buurten 2025 (dataset 86165NED).
 
-Queried by buurtcode (e.g. 'BU03920301') which pyfunda exposes directly as
-address.neighbourhood_identifier — no geocoding needed.
+Primary lookup: buurtcode from pyfunda address.neighbourhood_identifier.
+Fallback lookup: lat/lon → PDOK OGC bbox → buurtcode → CBS OData.
 Wijk code is derived from the buurt code: 'WK' + buurtcode[2:8].
 Results are persisted to SQLite (cbs_buurt / cbs_wijk) with a 365-day TTL.
 """
@@ -247,6 +247,25 @@ async def _fetch_region_name(code: str) -> str:
             return items[0]["Title"] if items else code
     except Exception:
         return code
+
+
+_PDOK_OGC = "https://api.pdok.nl/cbs/wijken-en-buurten-2025/ogc/v1/collections/buurten/items"
+_BBOX_DELTA = 0.003
+
+
+async def get_buurtcode_from_coords(lat: float, lon: float) -> str | None:
+    """Resolve lat/lon to a CBS buurtcode via PDOK OGC bbox query."""
+    bbox = f"{lon - _BBOX_DELTA},{lat - _BBOX_DELTA},{lon + _BBOX_DELTA},{lat + _BBOX_DELTA}"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(_PDOK_OGC, params={"bbox": bbox, "limit": 1})
+            resp.raise_for_status()
+            features = resp.json().get("features", [])
+            if features:
+                return features[0].get("properties", {}).get("buurtcode")
+    except Exception:
+        pass
+    return None
 
 
 # ---------------------------------------------------------------------------

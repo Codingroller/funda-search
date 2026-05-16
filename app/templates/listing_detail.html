@@ -20,50 +20,70 @@
   </div>
 </div>
 
-{# ── Hero photo ── #}
-{% if listing.photos %}
-<div class="detail-hero">
-  <img src="{{ listing.photos[0] }}" alt="{{ listing.title }}" class="detail-hero-img">
-</div>
-{% endif %}
+{# ── Funda listing info (collapsible) ── #}
+<details class="funda-details">
+  <summary class="funda-details-summary">
+    <span class="funda-details-title">Listing details</span>
+    <span class="funda-details-sub">{{ listing.price or 'Price on request' }}{% if listing.living_area %} · {{ listing.living_area }} m²{% endif %}{% if listing.rooms_count %} · {{ listing.rooms_count }} rooms{% endif %}</span>
+    <span class="funda-details-chevron">▸</span>
+  </summary>
 
-{# ── Price + key stats ── #}
-<div class="detail-meta-row">
-  <div class="detail-price-block">
-    <span class="detail-price">{{ listing.price or 'Price on request' }}</span>
-    {% if listing.price_per_m2 %}<span class="detail-ppm2">{{ listing.price_per_m2 }}</span>{% endif %}
+  {# ── Hero photo ── #}
+  {% if listing.photos %}
+  <div class="detail-hero">
+    <img src="{{ listing.photos[0] }}" alt="{{ listing.title }}" class="detail-hero-img">
   </div>
-  <div class="detail-tags">
-    {% if listing.living_area %}<span class="detail-tag">{{ listing.living_area }} m²</span>{% endif %}
-    {% if listing.plot_area %}<span class="detail-tag">Plot {{ listing.plot_area }} m²</span>{% endif %}
-    {% if listing.rooms_count %}<span class="detail-tag">{{ listing.rooms_count }} rooms</span>{% endif %}
-    {% if listing.bedrooms %}<span class="detail-tag">{{ listing.bedrooms }} bedrooms</span>{% endif %}
-    {% if listing.energy_label %}<span class="energy-label label-{{ listing.energy_label | replace('+','p') }}" style="font-size:13px;padding:3px 8px">{{ listing.energy_label }}</span>{% endif %}
-    {% if listing.construction_year %}<span class="detail-tag">Built {{ listing.construction_year }}</span>{% endif %}
-    {% if listing.object_type %}<span class="detail-tag">{{ listing.object_type | capitalize }}</span>{% endif %}
+  {% endif %}
+
+  {# ── Price + key stats ── #}
+  <div class="detail-meta-row">
+    <div class="detail-price-block">
+      <span class="detail-price">{{ listing.price or 'Price on request' }}</span>
+      {% if listing.price_per_m2 %}<span class="detail-ppm2">{{ listing.price_per_m2 }}</span>{% endif %}
+    </div>
+    <div class="detail-tags">
+      {% if listing.living_area %}<span class="detail-tag">{{ listing.living_area }} m²</span>{% endif %}
+      {% if listing.plot_area %}<span class="detail-tag">Plot {{ listing.plot_area }} m²</span>{% endif %}
+      {% if listing.rooms_count %}<span class="detail-tag">{{ listing.rooms_count }} rooms</span>{% endif %}
+      {% if listing.bedrooms %}<span class="detail-tag">{{ listing.bedrooms }} bedrooms</span>{% endif %}
+      {% if listing.energy_label %}<span class="energy-label label-{{ listing.energy_label | replace('+','p') }}" style="font-size:13px;padding:3px 8px">{{ listing.energy_label }}</span>{% endif %}
+      {% if listing.construction_year %}<span class="detail-tag">Built {{ listing.construction_year }}</span>{% endif %}
+      {% if listing.object_type %}<span class="detail-tag">{{ listing.object_type | capitalize }}</span>{% endif %}
+    </div>
   </div>
-</div>
 
-{# ── Gallery thumbnails ── #}
-{% if listing.photos | length > 1 %}
-<div class="detail-gallery">
-  {% for photo in listing.photos[1:] %}
-  <img src="{{ photo }}" alt="Photo {{ loop.index + 1 }}" class="detail-thumb" loading="lazy">
-  {% endfor %}
-</div>
-{% endif %}
-
-{# ── Funda description ── #}
-{% if listing.description %}
-<div class="detail-section">
-  <h2 class="detail-section-title">{% if listing.description_title %}{{ listing.description_title }}{% else %}About this listing{% endif %}</h2>
-  <div class="detail-description">
-    {% for para in listing.description.split('\n') %}
-      {% if para.strip() %}<p>{{ para.strip() }}</p>{% endif %}
+  {# ── Gallery thumbnails ── #}
+  {% if listing.photos | length > 1 %}
+  <div class="detail-gallery">
+    {% for photo in listing.photos[1:] %}
+    <img src="{{ photo }}" alt="Photo {{ loop.index + 1 }}" class="detail-thumb" loading="lazy">
     {% endfor %}
   </div>
-</div>
-{% endif %}
+  {% endif %}
+
+  {# ── Funda description ── #}
+  {% if listing.description %}
+  <div class="detail-section">
+    <h2 class="detail-section-title">{% if listing.description_title %}{{ listing.description_title }}{% else %}About this listing{% endif %}</h2>
+    <div class="detail-description">
+      {% for para in listing.description.split('\n') %}
+        {% if para.strip() %}<p>{{ para.strip() }}</p>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Broker ── #}
+  {% if listing.broker %}
+  <div style="padding-top:12px;margin-top:4px">
+    <span class="text-muted small">
+      Listed by <strong>{{ listing.broker.name or '—' }}</strong>
+      {% if listing.broker.association %} · {{ listing.broker.association }}{% endif %}
+    </span>
+  </div>
+  {% endif %}
+
+</details>
 
 {# ── Neighbourhood statistics ── #}
 {% if cbs %}
@@ -568,16 +588,6 @@
 {% else %}
 <div class="detail-section">
   <p class="text-muted">Neighbourhood statistics unavailable for this listing.</p>
-</div>
-{% endif %}
-
-{# ── Broker ── #}
-{% if listing.broker %}
-<div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px">
-  <span class="text-muted small">
-    Listed by <strong>{{ listing.broker.name or '—' }}</strong>
-    {% if listing.broker.association %} · {{ listing.broker.association }}{% endif %}
-  </span>
 </div>
 {% endif %}
 

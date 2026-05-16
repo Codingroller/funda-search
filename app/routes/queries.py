@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
 from app.auth import require_auth
-from app.cbs_client import get_neighbourhood_stats
+from app.cbs_client import get_buurtcode_from_coords, get_neighbourhood_stats
 from app.db import AsyncSessionLocal
 from app.funda_client import autocomplete as funda_autocomplete
 from app.funda_client import get_listing_detail, search_listings
@@ -290,8 +290,11 @@ async def listing_detail_page(request: Request, global_id: str):
         raise HTTPException(502, detail="Could not load listing from Funda")
 
     cbs = None
-    if listing.get("neighbourhood_identifier"):
-        cbs = await get_neighbourhood_stats(listing["neighbourhood_identifier"])
+    identifier = listing.get("neighbourhood_identifier")
+    if not identifier and listing.get("lat") and listing.get("lon"):
+        identifier = await get_buurtcode_from_coords(listing["lat"], listing["lon"])
+    if identifier:
+        cbs = await get_neighbourhood_stats(identifier)
 
     back_url = request.headers.get("referer") or "/"
     return templates.TemplateResponse(
