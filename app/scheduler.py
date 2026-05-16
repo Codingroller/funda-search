@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import select
@@ -120,21 +120,33 @@ async def run_query_job(query_id: int) -> None:
                     await db2.commit()
 
 
-def add_query_job(query_id: int, interval_minutes: int) -> None:
+def add_query_job(query_id: int, interval_minutes: int, last_run_at: datetime | None = None) -> None:
     job_id = f"query_{query_id}"
     if scheduler.get_job(job_id):
         scheduler.reschedule_job(job_id, trigger="interval", minutes=interval_minutes)
-    else:
-        scheduler.add_job(
-            run_query_job,
-            "interval",
-            minutes=interval_minutes,
-            id=job_id,
-            args=[query_id],
-            replace_existing=True,
-            max_instances=1,
-            coalesce=True,
-        )
+        return
+
+    # Compute next_run_time so restarts respect the existing schedule.
+    # If last_run_at is unknown, APScheduler's default fires one interval from now.
+    next_run_time = None
+    if last_run_at is not None:
+        ideal = last_run_at + timedelta(minutes=interval_minutes)
+        now = datetime.utcnow()
+        # If the ideal time has passed, run soon (30 s after startup) instead of
+        # waiting another full interval.
+        next_run_time = ideal if ideal > now else now + timedelta(seconds=30)
+
+    scheduler.add_job(
+        run_query_job,
+        "interval",
+        minutes=interval_minutes,
+        id=job_id,
+        args=[query_id],
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+        next_run_time=next_run_time,
+    )
 
 
 def remove_query_job(query_id: int) -> None:
@@ -149,4 +161,4 @@ async def reconcile_jobs() -> None:
             select(SavedQuery).where(SavedQuery.enabled == True)  # noqa: E712
         )
         for query in result.scalars().all():
-            add_query_job(query.id, query.interval_minutes)
+            add_query_job(query.id, query.interval_minutes, last_run_at=query.last_run_at)
