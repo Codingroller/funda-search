@@ -36,7 +36,7 @@ def _listing_to_dict(listing) -> dict:
         "bedrooms": getattr(listing, "bedrooms", None),
         "energy_label": getattr(listing, "energy_label", None),
         "photo_url": photo_url,
-        "publication_date": pub_date.isoformat() if pub_date else None,
+        "publication_date": pub_date if isinstance(pub_date, str) else (pub_date.isoformat() if pub_date else None),
     }
 
 
