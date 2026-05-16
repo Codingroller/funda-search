@@ -138,17 +138,8 @@ async def query_create(
             enabled=enabled,
         )
         db.add(query)
-        await db.flush()
-        query_id = query.id
-
-        try:
-            listings = await search_listings(params)
-            for listing in listings:
-                db.add(SeenListing(query_id=query_id, global_id=listing["global_id"]))
-        except Exception:
-            pass
-
         await db.commit()
+        query_id = query.id
 
     if enabled:
         add_query_job(query_id, interval_minutes)
