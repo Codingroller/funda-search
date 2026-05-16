@@ -46,6 +46,16 @@ async def test_bearer_token(monkeypatch):
 
 
 @respx.mock
+async def test_non_ascii_title_is_sanitized():
+    route = respx.post("https://ntfy.example.com/t").mock(return_value=httpx.Response(200))
+    await send_ntfy(topic="t", title="Query — €525.000 — Almere", message="body")
+    sent_title = route.calls[0].request.headers["x-title"]
+    assert sent_title.isascii(), f"Header contained non-ASCII: {sent_title!r}"
+    assert "EUR" in sent_title
+    assert "-" in sent_title
+
+
+@respx.mock
 async def test_raises_on_http_error():
     respx.post("https://ntfy.example.com/t").mock(return_value=httpx.Response(403))
     with pytest.raises(httpx.HTTPStatusError):
