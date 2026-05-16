@@ -195,20 +195,23 @@ a:hover { text-decoration: underline; }
   display: flex;
   flex-direction: row;
   align-items: stretch;
+  padding: 10px;
+  gap: 10px;
 }
 .listing-info {
   flex: 1;
   min-width: 0;
-  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  align-items: flex-start;
 }
-.listing-photo-link { flex-shrink: 0; display: block; }
+.listing-photo-link { flex-shrink: 0; display: block; align-self: stretch; }
 .listing-photo {
   width: 160px;
   height: 100%;
   object-fit: cover;
+  border-radius: calc(var(--radius) - 2px);
   display: block;
 }
 .listing-price { font-weight: 700; font-size: 16px; }
