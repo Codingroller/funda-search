@@ -2,6 +2,7 @@
 {% block title %}{{ listing.title or listing.global_id }} — Funda Search{% endblock %}
 {% block content %}
 
+{# ── Header ── #}
 <div class="page-header">
   <div>
     <a href="{{ back_url }}" class="btn btn-sm" style="margin-bottom:8px">← Back</a>
@@ -15,20 +16,18 @@
     {% endif %}
   </div>
   <div class="header-actions">
-    <a href="{{ listing.url }}" target="_blank" rel="noopener" class="btn btn-primary">
-      View on Funda ↗
-    </a>
+    <a href="{{ listing.url }}" target="_blank" rel="noopener" class="btn btn-primary">View on Funda ↗</a>
   </div>
 </div>
 
-{# Hero photo #}
+{# ── Hero photo ── #}
 {% if listing.photos %}
 <div class="detail-hero">
   <img src="{{ listing.photos[0] }}" alt="{{ listing.title }}" class="detail-hero-img">
 </div>
 {% endif %}
 
-{# Key stats row #}
+{# ── Price + key stats ── #}
 <div class="detail-meta-row">
   <div class="detail-price-block">
     <span class="detail-price">{{ listing.price or 'Price on request' }}</span>
@@ -45,7 +44,7 @@
   </div>
 </div>
 
-{# Gallery thumbnails (skip index 0, shown as hero) #}
+{# ── Gallery thumbnails ── #}
 {% if listing.photos | length > 1 %}
 <div class="detail-gallery">
   {% for photo in listing.photos[1:] %}
@@ -54,10 +53,10 @@
 </div>
 {% endif %}
 
-{# Description #}
+{# ── Funda description ── #}
 {% if listing.description %}
 <div class="detail-section">
-  {% if listing.description_title %}<h2 class="detail-section-title">{{ listing.description_title }}</h2>{% else %}<h2 class="detail-section-title">About this listing</h2>{% endif %}
+  <h2 class="detail-section-title">{% if listing.description_title %}{{ listing.description_title }}{% else %}About this listing{% endif %}</h2>
   <div class="detail-description">
     {% for para in listing.description.split('\n') %}
       {% if para.strip() %}<p>{{ para.strip() }}</p>{% endif %}
@@ -66,90 +65,515 @@
 </div>
 {% endif %}
 
-{# Neighbourhood stats #}
+{# ── Neighbourhood statistics ── #}
 {% if cbs %}
+{% set b = cbs.buurt %}
+{% set w = cbs.wijk %}
+
 <div class="detail-section">
   <h2 class="detail-section-title">
     Neighbourhood
-    {% if cbs.buurt %}<span class="text-muted" style="font-weight:400"> · {{ cbs.buurt.buurtnaam }}</span>{% endif %}
-    {% if cbs.wijk %}<span class="text-muted" style="font-weight:400"> · {{ cbs.wijk.wijknaam }}</span>{% endif %}
+    <span class="text-muted" style="font-weight:400;font-size:14px"> · {{ b.name }} (buurt) · {{ w.name }} (wijk)</span>
   </h2>
+
+  {# ── Panel row: Population & households ── #}
+  <div class="nb-theme-label">Population &amp; households</div>
   <div class="neighbourhood-panels">
-
-    {% if cbs.buurt %}
     <div class="card neighbourhood-card">
-      <h3 class="nb-card-title">{{ cbs.buurt.buurtnaam }} <span class="text-muted" style="font-weight:400;font-size:12px">(buurt)</span></h3>
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
       <div class="stats-grid">
-        <div class="stat-row"><span class="stat-label">Residents</span><span class="stat-value">{{ cbs.buurt.aantal_inwoners | cbs_value }}</span></div>
-        <div class="stat-row"><span class="stat-label">Households</span><span class="stat-value">{{ cbs.buurt.aantal_huishoudens | cbs_value }}</span></div>
-        <div class="stat-row"><span class="stat-label">Avg. household size</span><span class="stat-value">{{ cbs.buurt.gemiddelde_huishoudsgrootte | cbs_value }}</span></div>
-        <div class="stat-row"><span class="stat-label">Pop. density</span><span class="stat-value">{{ cbs.buurt.bevolkingsdichtheid_inwoners_per_km2 | cbs_value }}{% if cbs.buurt.bevolkingsdichtheid_inwoners_per_km2 != -99997 %} /km²{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">Land area</span><span class="stat-value">{{ cbs.buurt.oppervlakte_land_in_ha | cbs_value }}{% if cbs.buurt.oppervlakte_land_in_ha != -99997 %} ha{% endif %}</span></div>
+        {% if b.population.total is not none %}<div class="stat-row"><span>Residents</span><span>{{ b.population.total | int }}</span></div>{% endif %}
+        {% if b.population.men is not none %}<div class="stat-row"><span>Men</span><span>{{ b.population.men | int }}</span></div>{% endif %}
+        {% if b.population.women is not none %}<div class="stat-row"><span>Women</span><span>{{ b.population.women | int }}</span></div>{% endif %}
+        {% if b.households.density_per_km2 is not none %}<div class="stat-row"><span>Pop. density</span><span>{{ b.households.density_per_km2 | int }} /km²</span></div>{% endif %}
+        {% if b.population.births_total is not none %}<div class="stat-row"><span>Births</span><span>{{ b.population.births_total | int }}</span></div>{% endif %}
+        {% if b.population.deaths_total is not none %}<div class="stat-row"><span>Deaths</span><span>{{ b.population.deaths_total | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Age</div>
+      <div class="stats-grid">
+        {% if b.population.age_0_15 is not none %}<div class="stat-row"><span>0–15</span><span>{{ b.population.age_0_15 | int }}</span></div>{% endif %}
+        {% if b.population.age_15_25 is not none %}<div class="stat-row"><span>15–25</span><span>{{ b.population.age_15_25 | int }}</span></div>{% endif %}
+        {% if b.population.age_25_45 is not none %}<div class="stat-row"><span>25–45</span><span>{{ b.population.age_25_45 | int }}</span></div>{% endif %}
+        {% if b.population.age_45_65 is not none %}<div class="stat-row"><span>45–65</span><span>{{ b.population.age_45_65 | int }}</span></div>{% endif %}
+        {% if b.population.age_65plus is not none %}<div class="stat-row"><span>65+</span><span>{{ b.population.age_65plus | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Marital status</div>
+      <div class="stats-grid">
+        {% if b.marital.unmarried is not none %}<div class="stat-row"><span>Unmarried</span><span>{{ b.marital.unmarried | int }}</span></div>{% endif %}
+        {% if b.marital.married is not none %}<div class="stat-row"><span>Married</span><span>{{ b.marital.married | int }}</span></div>{% endif %}
+        {% if b.marital.divorced is not none %}<div class="stat-row"><span>Divorced</span><span>{{ b.marital.divorced | int }}</span></div>{% endif %}
+        {% if b.marital.widowed is not none %}<div class="stat-row"><span>Widowed</span><span>{{ b.marital.widowed | int }}</span></div>{% endif %}
       </div>
       <div class="nb-subheading">Households</div>
       <div class="stats-grid">
-        <div class="stat-row"><span class="stat-label">Single-person</span><span class="stat-value">{{ cbs.buurt.percentage_eenpersoonshuishoudens | cbs_value }}{% if cbs.buurt.percentage_eenpersoonshuishoudens != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">With children</span><span class="stat-value">{{ cbs.buurt.percentage_huishoudens_met_kinderen | cbs_value }}{% if cbs.buurt.percentage_huishoudens_met_kinderen != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">Without children</span><span class="stat-value">{{ cbs.buurt.percentage_huishoudens_zonder_kinderen | cbs_value }}{% if cbs.buurt.percentage_huishoudens_zonder_kinderen != -99997 %}%{% endif %}</span></div>
-      </div>
-      <div class="nb-subheading">Age distribution</div>
-      <div class="stats-grid">
-        <div class="stat-row"><span class="stat-label">0–15</span><span class="stat-value">{{ cbs.buurt.percentage_personen_0_tot_15_jaar | cbs_value }}{% if cbs.buurt.percentage_personen_0_tot_15_jaar != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">15–25</span><span class="stat-value">{{ cbs.buurt.percentage_personen_15_tot_25_jaar | cbs_value }}{% if cbs.buurt.percentage_personen_15_tot_25_jaar != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">25–45</span><span class="stat-value">{{ cbs.buurt.percentage_personen_25_tot_45_jaar | cbs_value }}{% if cbs.buurt.percentage_personen_25_tot_45_jaar != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">45–65</span><span class="stat-value">{{ cbs.buurt.percentage_personen_45_tot_65_jaar | cbs_value }}{% if cbs.buurt.percentage_personen_45_tot_65_jaar != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">65+</span><span class="stat-value">{{ cbs.buurt.percentage_personen_65_jaar_en_ouder | cbs_value }}{% if cbs.buurt.percentage_personen_65_jaar_en_ouder != -99997 %}%{% endif %}</span></div>
-      </div>
-      <div class="nb-subheading">Heritage</div>
-      <div class="stats-grid">
-        <div class="stat-row"><span class="stat-label">Netherlands</span><span class="stat-value">{{ cbs.buurt.percentage_met_herkomstland_nederland | cbs_value }}{% if cbs.buurt.percentage_met_herkomstland_nederland != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">Europe (excl. NL)</span><span class="stat-value">{{ cbs.buurt.percentage_met_herkomstland_uit_europa_excl_nl | cbs_value }}{% if cbs.buurt.percentage_met_herkomstland_uit_europa_excl_nl != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">Outside Europe</span><span class="stat-value">{{ cbs.buurt.percentage_met_herkomstland_buiten_europa | cbs_value }}{% if cbs.buurt.percentage_met_herkomstland_buiten_europa != -99997 %}%{% endif %}</span></div>
+        {% if b.households.total is not none %}<div class="stat-row"><span>Total</span><span>{{ b.households.total | int }}</span></div>{% endif %}
+        {% if b.households.single_person is not none %}<div class="stat-row"><span>Single-person</span><span>{{ b.households.single_person | int }}</span></div>{% endif %}
+        {% if b.households.with_children is not none %}<div class="stat-row"><span>With children</span><span>{{ b.households.with_children | int }}</span></div>{% endif %}
+        {% if b.households.without_children is not none %}<div class="stat-row"><span>Without children</span><span>{{ b.households.without_children | int }}</span></div>{% endif %}
+        {% if b.households.avg_size is not none %}<div class="stat-row"><span>Avg. size</span><span>{{ b.households.avg_size }}</span></div>{% endif %}
       </div>
     </div>
-    {% endif %}
 
-    {% if cbs.wijk %}
     <div class="card neighbourhood-card">
-      <h3 class="nb-card-title">{{ cbs.wijk.wijknaam }} <span class="text-muted" style="font-weight:400;font-size:12px">(wijk)</span></h3>
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
       <div class="stats-grid">
-        <div class="stat-row"><span class="stat-label">Residents</span><span class="stat-value">{{ cbs.wijk.aantal_inwoners | cbs_value }}</span></div>
-        <div class="stat-row"><span class="stat-label">Households</span><span class="stat-value">{{ cbs.wijk.aantal_huishoudens | cbs_value }}</span></div>
-        <div class="stat-row"><span class="stat-label">Avg. household size</span><span class="stat-value">{{ cbs.wijk.gemiddelde_huishoudsgrootte | cbs_value }}</span></div>
-        <div class="stat-row"><span class="stat-label">Pop. density</span><span class="stat-value">{{ cbs.wijk.bevolkingsdichtheid_inwoners_per_km2 | cbs_value }}{% if cbs.wijk.bevolkingsdichtheid_inwoners_per_km2 != -99997 %} /km²{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">Land area</span><span class="stat-value">{{ cbs.wijk.oppervlakte_land_in_ha | cbs_value }}{% if cbs.wijk.oppervlakte_land_in_ha != -99997 %} ha{% endif %}</span></div>
+        {% if w.population.total is not none %}<div class="stat-row"><span>Residents</span><span>{{ w.population.total | int }}</span></div>{% endif %}
+        {% if w.population.men is not none %}<div class="stat-row"><span>Men</span><span>{{ w.population.men | int }}</span></div>{% endif %}
+        {% if w.population.women is not none %}<div class="stat-row"><span>Women</span><span>{{ w.population.women | int }}</span></div>{% endif %}
+        {% if w.households.density_per_km2 is not none %}<div class="stat-row"><span>Pop. density</span><span>{{ w.households.density_per_km2 | int }} /km²</span></div>{% endif %}
+        {% if w.population.births_total is not none %}<div class="stat-row"><span>Births</span><span>{{ w.population.births_total | int }}</span></div>{% endif %}
+        {% if w.population.deaths_total is not none %}<div class="stat-row"><span>Deaths</span><span>{{ w.population.deaths_total | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Age</div>
+      <div class="stats-grid">
+        {% if w.population.age_0_15 is not none %}<div class="stat-row"><span>0–15</span><span>{{ w.population.age_0_15 | int }}</span></div>{% endif %}
+        {% if w.population.age_15_25 is not none %}<div class="stat-row"><span>15–25</span><span>{{ w.population.age_15_25 | int }}</span></div>{% endif %}
+        {% if w.population.age_25_45 is not none %}<div class="stat-row"><span>25–45</span><span>{{ w.population.age_25_45 | int }}</span></div>{% endif %}
+        {% if w.population.age_45_65 is not none %}<div class="stat-row"><span>45–65</span><span>{{ w.population.age_45_65 | int }}</span></div>{% endif %}
+        {% if w.population.age_65plus is not none %}<div class="stat-row"><span>65+</span><span>{{ w.population.age_65plus | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Marital status</div>
+      <div class="stats-grid">
+        {% if w.marital.unmarried is not none %}<div class="stat-row"><span>Unmarried</span><span>{{ w.marital.unmarried | int }}</span></div>{% endif %}
+        {% if w.marital.married is not none %}<div class="stat-row"><span>Married</span><span>{{ w.marital.married | int }}</span></div>{% endif %}
+        {% if w.marital.divorced is not none %}<div class="stat-row"><span>Divorced</span><span>{{ w.marital.divorced | int }}</span></div>{% endif %}
+        {% if w.marital.widowed is not none %}<div class="stat-row"><span>Widowed</span><span>{{ w.marital.widowed | int }}</span></div>{% endif %}
       </div>
       <div class="nb-subheading">Households</div>
       <div class="stats-grid">
-        <div class="stat-row"><span class="stat-label">Single-person</span><span class="stat-value">{{ cbs.wijk.percentage_eenpersoonshuishoudens | cbs_value }}{% if cbs.wijk.percentage_eenpersoonshuishoudens != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">With children</span><span class="stat-value">{{ cbs.wijk.percentage_huishoudens_met_kinderen | cbs_value }}{% if cbs.wijk.percentage_huishoudens_met_kinderen != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">Without children</span><span class="stat-value">{{ cbs.wijk.percentage_huishoudens_zonder_kinderen | cbs_value }}{% if cbs.wijk.percentage_huishoudens_zonder_kinderen != -99997 %}%{% endif %}</span></div>
-      </div>
-      <div class="nb-subheading">Age distribution</div>
-      <div class="stats-grid">
-        <div class="stat-row"><span class="stat-label">0–15</span><span class="stat-value">{{ cbs.wijk.percentage_personen_0_tot_15_jaar | cbs_value }}{% if cbs.wijk.percentage_personen_0_tot_15_jaar != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">15–25</span><span class="stat-value">{{ cbs.wijk.percentage_personen_15_tot_25_jaar | cbs_value }}{% if cbs.wijk.percentage_personen_15_tot_25_jaar != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">25–45</span><span class="stat-value">{{ cbs.wijk.percentage_personen_25_tot_45_jaar | cbs_value }}{% if cbs.wijk.percentage_personen_25_tot_45_jaar != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">45–65</span><span class="stat-value">{{ cbs.wijk.percentage_personen_45_tot_65_jaar | cbs_value }}{% if cbs.wijk.percentage_personen_45_tot_65_jaar != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">65+</span><span class="stat-value">{{ cbs.wijk.percentage_personen_65_jaar_en_ouder | cbs_value }}{% if cbs.wijk.percentage_personen_65_jaar_en_ouder != -99997 %}%{% endif %}</span></div>
-      </div>
-      <div class="nb-subheading">Heritage</div>
-      <div class="stats-grid">
-        <div class="stat-row"><span class="stat-label">Netherlands</span><span class="stat-value">{{ cbs.wijk.percentage_met_herkomstland_nederland | cbs_value }}{% if cbs.wijk.percentage_met_herkomstland_nederland != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">Europe (excl. NL)</span><span class="stat-value">{{ cbs.wijk.percentage_met_herkomstland_uit_europa_excl_nl | cbs_value }}{% if cbs.wijk.percentage_met_herkomstland_uit_europa_excl_nl != -99997 %}%{% endif %}</span></div>
-        <div class="stat-row"><span class="stat-label">Outside Europe</span><span class="stat-value">{{ cbs.wijk.percentage_met_herkomstland_buiten_europa | cbs_value }}{% if cbs.wijk.percentage_met_herkomstland_buiten_europa != -99997 %}%{% endif %}</span></div>
+        {% if w.households.total is not none %}<div class="stat-row"><span>Total</span><span>{{ w.households.total | int }}</span></div>{% endif %}
+        {% if w.households.single_person is not none %}<div class="stat-row"><span>Single-person</span><span>{{ w.households.single_person | int }}</span></div>{% endif %}
+        {% if w.households.with_children is not none %}<div class="stat-row"><span>With children</span><span>{{ w.households.with_children | int }}</span></div>{% endif %}
+        {% if w.households.without_children is not none %}<div class="stat-row"><span>Without children</span><span>{{ w.households.without_children | int }}</span></div>{% endif %}
+        {% if w.households.avg_size is not none %}<div class="stat-row"><span>Avg. size</span><span>{{ w.households.avg_size }}</span></div>{% endif %}
       </div>
     </div>
-    {% endif %}
-
   </div>
-  <p class="text-muted small" style="margin-top:8px">Source: CBS Wijken en Buurten 2025 via PDOK</p>
+
+  {# ── Heritage ── #}
+  <div class="nb-theme-label">Heritage background</div>
+  <div class="neighbourhood-panels">
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
+      <div class="nb-subheading">All residents (total)</div>
+      <div class="stats-grid">
+        {% if b.heritage.total_nl is not none %}<div class="stat-row"><span>Netherlands</span><span>{{ b.heritage.total_nl | int }}</span></div>{% endif %}
+        {% if b.heritage.total_europe is not none %}<div class="stat-row"><span>Europe (excl. NL)</span><span>{{ b.heritage.total_europe | int }}</span></div>{% endif %}
+        {% if b.heritage.total_outside_europe is not none %}<div class="stat-row"><span>Outside Europe</span><span>{{ b.heritage.total_outside_europe | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Born in Netherlands</div>
+      <div class="stats-grid">
+        {% if b.heritage.born_nl_heritage_nl is not none %}<div class="stat-row"><span>NL heritage</span><span>{{ b.heritage.born_nl_heritage_nl | int }}</span></div>{% endif %}
+        {% if b.heritage.born_nl_heritage_europe is not none %}<div class="stat-row"><span>European heritage</span><span>{{ b.heritage.born_nl_heritage_europe | int }}</span></div>{% endif %}
+        {% if b.heritage.born_nl_heritage_outside is not none %}<div class="stat-row"><span>Non-European heritage</span><span>{{ b.heritage.born_nl_heritage_outside | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Born abroad</div>
+      <div class="stats-grid">
+        {% if b.heritage.born_abroad_heritage_europe is not none %}<div class="stat-row"><span>European heritage</span><span>{{ b.heritage.born_abroad_heritage_europe | int }}</span></div>{% endif %}
+        {% if b.heritage.born_abroad_heritage_outside is not none %}<div class="stat-row"><span>Non-European heritage</span><span>{{ b.heritage.born_abroad_heritage_outside | int }}</span></div>{% endif %}
+      </div>
+    </div>
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
+      <div class="nb-subheading">All residents (total)</div>
+      <div class="stats-grid">
+        {% if w.heritage.total_nl is not none %}<div class="stat-row"><span>Netherlands</span><span>{{ w.heritage.total_nl | int }}</span></div>{% endif %}
+        {% if w.heritage.total_europe is not none %}<div class="stat-row"><span>Europe (excl. NL)</span><span>{{ w.heritage.total_europe | int }}</span></div>{% endif %}
+        {% if w.heritage.total_outside_europe is not none %}<div class="stat-row"><span>Outside Europe</span><span>{{ w.heritage.total_outside_europe | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Born in Netherlands</div>
+      <div class="stats-grid">
+        {% if w.heritage.born_nl_heritage_nl is not none %}<div class="stat-row"><span>NL heritage</span><span>{{ w.heritage.born_nl_heritage_nl | int }}</span></div>{% endif %}
+        {% if w.heritage.born_nl_heritage_europe is not none %}<div class="stat-row"><span>European heritage</span><span>{{ w.heritage.born_nl_heritage_europe | int }}</span></div>{% endif %}
+        {% if w.heritage.born_nl_heritage_outside is not none %}<div class="stat-row"><span>Non-European heritage</span><span>{{ w.heritage.born_nl_heritage_outside | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Born abroad</div>
+      <div class="stats-grid">
+        {% if w.heritage.born_abroad_heritage_europe is not none %}<div class="stat-row"><span>European heritage</span><span>{{ w.heritage.born_abroad_heritage_europe | int }}</span></div>{% endif %}
+        {% if w.heritage.born_abroad_heritage_outside is not none %}<div class="stat-row"><span>Non-European heritage</span><span>{{ w.heritage.born_abroad_heritage_outside | int }}</span></div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Housing ── #}
+  <div class="nb-theme-label">Housing</div>
+  <div class="neighbourhood-panels">
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
+      <div class="stats-grid">
+        {% if b.housing.woz_value_k is not none %}<div class="stat-row"><span>Avg. WOZ value</span><span>€ {{ (b.housing.woz_value_k * 1000) | int | format_price }}</span></div>{% endif %}
+        {% if b.housing.total_stock is not none %}<div class="stat-row"><span>Total homes</span><span>{{ b.housing.total_stock | int }}</span></div>{% endif %}
+        {% if b.housing.vacant is not none %}<div class="stat-row"><span>Vacant</span><span>{{ b.housing.vacant | int }}%</span></div>{% endif %}
+        {% if b.housing.pct_owner is not none %}<div class="stat-row"><span>Owner-occupied</span><span>{{ b.housing.pct_owner | int }}%</span></div>{% endif %}
+        {% if b.housing.pct_rental is not none %}<div class="stat-row"><span>Rental (total)</span><span>{{ b.housing.pct_rental | int }}%</span></div>{% endif %}
+        {% if b.housing.pct_rental_corp is not none %}<div class="stat-row"><span>— Housing corp.</span><span>{{ b.housing.pct_rental_corp | int }}%</span></div>{% endif %}
+        {% if b.housing.pct_rental_other is not none %}<div class="stat-row"><span>— Other landlord</span><span>{{ b.housing.pct_rental_other | int }}%</span></div>{% endif %}
+        {% if b.housing.pct_built_over_10y is not none %}<div class="stat-row"><span>Built > 10 yrs ago</span><span>{{ b.housing.pct_built_over_10y | int }}%</span></div>{% endif %}
+        {% if b.housing.pct_built_last_10y is not none %}<div class="stat-row"><span>Built last 10 yrs</span><span>{{ b.housing.pct_built_last_10y | int }}%</span></div>{% endif %}
+        {% if b.housing.pct_gas_free is not none %}<div class="stat-row"><span>Gas-free</span><span>{{ b.housing.pct_gas_free | int }}%</span></div>{% endif %}
+        {% if b.housing.pct_gas_heated is not none %}<div class="stat-row"><span>Gas heated</span><span>{{ b.housing.pct_gas_heated | int }}%</span></div>{% endif %}
+        {% if b.housing.non_residential is not none %}<div class="stat-row"><span>Non-residential</span><span>{{ b.housing.non_residential | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Housing type</div>
+      <div class="stats-grid">
+        {% if b.housing_type.pct_single_family is not none %}<div class="stat-row"><span>Single-family</span><span>{{ b.housing_type.pct_single_family | int }}%</span></div>{% endif %}
+        {% if b.housing_type.pct_terraced is not none %}<div class="stat-row"><span>— Terraced</span><span>{{ b.housing_type.pct_terraced | int }}%</span></div>{% endif %}
+        {% if b.housing_type.pct_corner is not none %}<div class="stat-row"><span>— Corner</span><span>{{ b.housing_type.pct_corner | int }}%</span></div>{% endif %}
+        {% if b.housing_type.pct_semi_detached is not none %}<div class="stat-row"><span>— Semi-detached</span><span>{{ b.housing_type.pct_semi_detached | int }}%</span></div>{% endif %}
+        {% if b.housing_type.pct_detached is not none %}<div class="stat-row"><span>— Detached</span><span>{{ b.housing_type.pct_detached | int }}%</span></div>{% endif %}
+        {% if b.housing_type.pct_apartment is not none %}<div class="stat-row"><span>Apartment</span><span>{{ b.housing_type.pct_apartment | int }}%</span></div>{% endif %}
+      </div>
+    </div>
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
+      <div class="stats-grid">
+        {% if w.housing.woz_value_k is not none %}<div class="stat-row"><span>Avg. WOZ value</span><span>€ {{ (w.housing.woz_value_k * 1000) | int | format_price }}</span></div>{% endif %}
+        {% if w.housing.total_stock is not none %}<div class="stat-row"><span>Total homes</span><span>{{ w.housing.total_stock | int }}</span></div>{% endif %}
+        {% if w.housing.vacant is not none %}<div class="stat-row"><span>Vacant</span><span>{{ w.housing.vacant | int }}%</span></div>{% endif %}
+        {% if w.housing.pct_owner is not none %}<div class="stat-row"><span>Owner-occupied</span><span>{{ w.housing.pct_owner | int }}%</span></div>{% endif %}
+        {% if w.housing.pct_rental is not none %}<div class="stat-row"><span>Rental (total)</span><span>{{ w.housing.pct_rental | int }}%</span></div>{% endif %}
+        {% if w.housing.pct_rental_corp is not none %}<div class="stat-row"><span>— Housing corp.</span><span>{{ w.housing.pct_rental_corp | int }}%</span></div>{% endif %}
+        {% if w.housing.pct_rental_other is not none %}<div class="stat-row"><span>— Other landlord</span><span>{{ w.housing.pct_rental_other | int }}%</span></div>{% endif %}
+        {% if w.housing.pct_built_over_10y is not none %}<div class="stat-row"><span>Built > 10 yrs ago</span><span>{{ w.housing.pct_built_over_10y | int }}%</span></div>{% endif %}
+        {% if w.housing.pct_built_last_10y is not none %}<div class="stat-row"><span>Built last 10 yrs</span><span>{{ w.housing.pct_built_last_10y | int }}%</span></div>{% endif %}
+        {% if w.housing.pct_gas_free is not none %}<div class="stat-row"><span>Gas-free</span><span>{{ w.housing.pct_gas_free | int }}%</span></div>{% endif %}
+        {% if w.housing.pct_gas_heated is not none %}<div class="stat-row"><span>Gas heated</span><span>{{ w.housing.pct_gas_heated | int }}%</span></div>{% endif %}
+        {% if w.housing.non_residential is not none %}<div class="stat-row"><span>Non-residential</span><span>{{ w.housing.non_residential | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Housing type</div>
+      <div class="stats-grid">
+        {% if w.housing_type.pct_single_family is not none %}<div class="stat-row"><span>Single-family</span><span>{{ w.housing_type.pct_single_family | int }}%</span></div>{% endif %}
+        {% if w.housing_type.pct_terraced is not none %}<div class="stat-row"><span>— Terraced</span><span>{{ w.housing_type.pct_terraced | int }}%</span></div>{% endif %}
+        {% if w.housing_type.pct_corner is not none %}<div class="stat-row"><span>— Corner</span><span>{{ w.housing_type.pct_corner | int }}%</span></div>{% endif %}
+        {% if w.housing_type.pct_semi_detached is not none %}<div class="stat-row"><span>— Semi-detached</span><span>{{ w.housing_type.pct_semi_detached | int }}%</span></div>{% endif %}
+        {% if w.housing_type.pct_detached is not none %}<div class="stat-row"><span>— Detached</span><span>{{ w.housing_type.pct_detached | int }}%</span></div>{% endif %}
+        {% if w.housing_type.pct_apartment is not none %}<div class="stat-row"><span>Apartment</span><span>{{ w.housing_type.pct_apartment | int }}%</span></div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Businesses ── #}
+  <div class="nb-theme-label">Businesses</div>
+  <div class="neighbourhood-panels">
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
+      <div class="stats-grid">
+        {% if b.businesses.total is not none %}<div class="stat-row stat-row-total"><span>Total</span><span>{{ b.businesses.total | int }}</span></div>{% endif %}
+        {% if b.businesses.agriculture is not none %}<div class="stat-row"><span>Agriculture</span><span>{{ b.businesses.agriculture | int }}</span></div>{% endif %}
+        {% if b.businesses.industry is not none %}<div class="stat-row"><span>Industry &amp; energy</span><span>{{ b.businesses.industry | int }}</span></div>{% endif %}
+        {% if b.businesses.retail_hosp is not none %}<div class="stat-row"><span>Retail &amp; hospitality</span><span>{{ b.businesses.retail_hosp | int }}</span></div>{% endif %}
+        {% if b.businesses.transport_ict is not none %}<div class="stat-row"><span>Transport &amp; ICT</span><span>{{ b.businesses.transport_ict | int }}</span></div>{% endif %}
+        {% if b.businesses.finance_re is not none %}<div class="stat-row"><span>Finance &amp; real estate</span><span>{{ b.businesses.finance_re | int }}</span></div>{% endif %}
+        {% if b.businesses.business_svc is not none %}<div class="stat-row"><span>Business services</span><span>{{ b.businesses.business_svc | int }}</span></div>{% endif %}
+        {% if b.businesses.gov_edu_health is not none %}<div class="stat-row"><span>Gov., edu. &amp; health</span><span>{{ b.businesses.gov_edu_health | int }}</span></div>{% endif %}
+        {% if b.businesses.culture_other is not none %}<div class="stat-row"><span>Culture &amp; other</span><span>{{ b.businesses.culture_other | int }}</span></div>{% endif %}
+      </div>
+    </div>
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
+      <div class="stats-grid">
+        {% if w.businesses.total is not none %}<div class="stat-row stat-row-total"><span>Total</span><span>{{ w.businesses.total | int }}</span></div>{% endif %}
+        {% if w.businesses.agriculture is not none %}<div class="stat-row"><span>Agriculture</span><span>{{ w.businesses.agriculture | int }}</span></div>{% endif %}
+        {% if w.businesses.industry is not none %}<div class="stat-row"><span>Industry &amp; energy</span><span>{{ w.businesses.industry | int }}</span></div>{% endif %}
+        {% if w.businesses.retail_hosp is not none %}<div class="stat-row"><span>Retail &amp; hospitality</span><span>{{ w.businesses.retail_hosp | int }}</span></div>{% endif %}
+        {% if w.businesses.transport_ict is not none %}<div class="stat-row"><span>Transport &amp; ICT</span><span>{{ w.businesses.transport_ict | int }}</span></div>{% endif %}
+        {% if w.businesses.finance_re is not none %}<div class="stat-row"><span>Finance &amp; real estate</span><span>{{ w.businesses.finance_re | int }}</span></div>{% endif %}
+        {% if w.businesses.business_svc is not none %}<div class="stat-row"><span>Business services</span><span>{{ w.businesses.business_svc | int }}</span></div>{% endif %}
+        {% if w.businesses.gov_edu_health is not none %}<div class="stat-row"><span>Gov., edu. &amp; health</span><span>{{ w.businesses.gov_edu_health | int }}</span></div>{% endif %}
+        {% if w.businesses.culture_other is not none %}<div class="stat-row"><span>Culture &amp; other</span><span>{{ w.businesses.culture_other | int }}</span></div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Mobility & proximity ── #}
+  <div class="nb-theme-label">Mobility &amp; proximity</div>
+  <div class="neighbourhood-panels">
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
+      <div class="nb-subheading">Cars</div>
+      <div class="stats-grid">
+        {% if b.mobility.cars_total is not none %}<div class="stat-row"><span>Total cars</span><span>{{ b.mobility.cars_total | int }}</span></div>{% endif %}
+        {% if b.mobility.cars_petrol is not none %}<div class="stat-row"><span>Petrol</span><span>{{ b.mobility.cars_petrol | int }}</span></div>{% endif %}
+        {% if b.mobility.cars_other_fuel is not none %}<div class="stat-row"><span>Other fuel (incl. EV)</span><span>{{ b.mobility.cars_other_fuel | int }}</span></div>{% endif %}
+        {% if b.mobility.cars_per_household is not none %}<div class="stat-row"><span>Per household</span><span>{{ b.mobility.cars_per_household }}</span></div>{% endif %}
+        {% if b.mobility.cars_per_km2 is not none %}<div class="stat-row"><span>Per km²</span><span>{{ b.mobility.cars_per_km2 | int }}</span></div>{% endif %}
+        {% if b.mobility.motorcycles is not none %}<div class="stat-row"><span>Motorcycles</span><span>{{ b.mobility.motorcycles | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Distance to amenities</div>
+      <div class="stats-grid">
+        {% if b.proximity.gp_km is not none %}<div class="stat-row"><span>GP practice</span><span>{{ b.proximity.gp_km }} km</span></div>{% endif %}
+        {% if b.proximity.supermarket_km is not none %}<div class="stat-row"><span>Supermarket</span><span>{{ b.proximity.supermarket_km }} km</span></div>{% endif %}
+        {% if b.proximity.childcare_km is not none %}<div class="stat-row"><span>Childcare</span><span>{{ b.proximity.childcare_km }} km</span></div>{% endif %}
+        {% if b.proximity.school_km is not none %}<div class="stat-row"><span>Primary school</span><span>{{ b.proximity.school_km }} km</span></div>{% endif %}
+        {% if b.proximity.schools_3km is not none %}<div class="stat-row"><span>Schools within 3 km</span><span>{{ b.proximity.schools_3km }}</span></div>{% endif %}
+      </div>
+    </div>
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
+      <div class="nb-subheading">Cars</div>
+      <div class="stats-grid">
+        {% if w.mobility.cars_total is not none %}<div class="stat-row"><span>Total cars</span><span>{{ w.mobility.cars_total | int }}</span></div>{% endif %}
+        {% if w.mobility.cars_petrol is not none %}<div class="stat-row"><span>Petrol</span><span>{{ w.mobility.cars_petrol | int }}</span></div>{% endif %}
+        {% if w.mobility.cars_other_fuel is not none %}<div class="stat-row"><span>Other fuel (incl. EV)</span><span>{{ w.mobility.cars_other_fuel | int }}</span></div>{% endif %}
+        {% if w.mobility.cars_per_household is not none %}<div class="stat-row"><span>Per household</span><span>{{ w.mobility.cars_per_household }}</span></div>{% endif %}
+        {% if w.mobility.cars_per_km2 is not none %}<div class="stat-row"><span>Per km²</span><span>{{ w.mobility.cars_per_km2 | int }}</span></div>{% endif %}
+        {% if w.mobility.motorcycles is not none %}<div class="stat-row"><span>Motorcycles</span><span>{{ w.mobility.motorcycles | int }}</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Distance to amenities</div>
+      <div class="stats-grid">
+        {% if w.proximity.gp_km is not none %}<div class="stat-row"><span>GP practice</span><span>{{ w.proximity.gp_km }} km</span></div>{% endif %}
+        {% if w.proximity.supermarket_km is not none %}<div class="stat-row"><span>Supermarket</span><span>{{ w.proximity.supermarket_km }} km</span></div>{% endif %}
+        {% if w.proximity.childcare_km is not none %}<div class="stat-row"><span>Childcare</span><span>{{ w.proximity.childcare_km }} km</span></div>{% endif %}
+        {% if w.proximity.school_km is not none %}<div class="stat-row"><span>Primary school</span><span>{{ w.proximity.school_km }} km</span></div>{% endif %}
+        {% if w.proximity.schools_3km is not none %}<div class="stat-row"><span>Schools within 3 km</span><span>{{ w.proximity.schools_3km }}</span></div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# ── Labour, income, education, energy — show only if populated (quarterly data) ── #}
+  {% set b_has_labour = b.labour.working_population is not none or b.labour.net_participation_pct is not none %}
+  {% set w_has_labour = w.labour.working_population is not none or w.labour.net_participation_pct is not none %}
+  {% if b_has_labour or w_has_labour %}
+  <div class="nb-theme-label">Labour</div>
+  <div class="neighbourhood-panels">
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
+      <div class="stats-grid">
+        {% if b.labour.working_population is not none %}<div class="stat-row"><span>Working population</span><span>{{ b.labour.working_population | int }}</span></div>{% endif %}
+        {% if b.labour.net_participation_pct is not none %}<div class="stat-row"><span>Net participation</span><span>{{ b.labour.net_participation_pct }}%</span></div>{% endif %}
+        {% if b.labour.pct_employees is not none %}<div class="stat-row"><span>Employees</span><span>{{ b.labour.pct_employees | int }}%</span></div>{% endif %}
+        {% if b.labour.pct_permanent is not none %}<div class="stat-row"><span>— Permanent</span><span>{{ b.labour.pct_permanent | int }}%</span></div>{% endif %}
+        {% if b.labour.pct_flex is not none %}<div class="stat-row"><span>— Flexible</span><span>{{ b.labour.pct_flex | int }}%</span></div>{% endif %}
+        {% if b.labour.pct_self_employed is not none %}<div class="stat-row"><span>Self-employed</span><span>{{ b.labour.pct_self_employed | int }}%</span></div>{% endif %}
+      </div>
+    </div>
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
+      <div class="stats-grid">
+        {% if w.labour.working_population is not none %}<div class="stat-row"><span>Working population</span><span>{{ w.labour.working_population | int }}</span></div>{% endif %}
+        {% if w.labour.net_participation_pct is not none %}<div class="stat-row"><span>Net participation</span><span>{{ w.labour.net_participation_pct }}%</span></div>{% endif %}
+        {% if w.labour.pct_employees is not none %}<div class="stat-row"><span>Employees</span><span>{{ w.labour.pct_employees | int }}%</span></div>{% endif %}
+        {% if w.labour.pct_permanent is not none %}<div class="stat-row"><span>— Permanent</span><span>{{ w.labour.pct_permanent | int }}%</span></div>{% endif %}
+        {% if w.labour.pct_flex is not none %}<div class="stat-row"><span>— Flexible</span><span>{{ w.labour.pct_flex | int }}%</span></div>{% endif %}
+        {% if w.labour.pct_self_employed is not none %}<div class="stat-row"><span>Self-employed</span><span>{{ w.labour.pct_self_employed | int }}%</span></div>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% set b_has_income = b.income.avg_per_resident_k is not none or b.income.pct_poverty is not none %}
+  {% set w_has_income = w.income.avg_per_resident_k is not none or w.income.pct_poverty is not none %}
+  {% if b_has_income or w_has_income %}
+  <div class="nb-theme-label">Income &amp; wealth</div>
+  <div class="neighbourhood-panels">
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
+      <div class="stats-grid">
+        {% if b.income.recipients is not none %}<div class="stat-row"><span>Income recipients</span><span>{{ b.income.recipients | int }}</span></div>{% endif %}
+        {% if b.income.avg_per_recipient_k is not none %}<div class="stat-row"><span>Avg. per recipient</span><span>€ {{ (b.income.avg_per_recipient_k * 1000) | int | format_price }}</span></div>{% endif %}
+        {% if b.income.avg_per_resident_k is not none %}<div class="stat-row"><span>Avg. per resident</span><span>€ {{ (b.income.avg_per_resident_k * 1000) | int | format_price }}</span></div>{% endif %}
+        {% if b.income.avg_standardized_k is not none %}<div class="stat-row"><span>Standardized avg.</span><span>€ {{ (b.income.avg_standardized_k * 1000) | int | format_price }}</span></div>{% endif %}
+        {% if b.income.median_wealth_k is not none %}<div class="stat-row"><span>Median wealth</span><span>€ {{ (b.income.median_wealth_k * 1000) | int | format_price }}</span></div>{% endif %}
+        {% if b.income.pct_poverty is not none %}<div class="stat-row"><span>In poverty</span><span>{{ b.income.pct_poverty }}%</span></div>{% endif %}
+        {% if b.income.pct_near_poverty is not none %}<div class="stat-row"><span>Near poverty threshold</span><span>{{ b.income.pct_near_poverty }}%</span></div>{% endif %}
+        {% if b.income.pct_lowest_40 is not none %}<div class="stat-row"><span>Lowest 40% (persons)</span><span>{{ b.income.pct_lowest_40 | int }}%</span></div>{% endif %}
+        {% if b.income.pct_highest_20 is not none %}<div class="stat-row"><span>Highest 20% (persons)</span><span>{{ b.income.pct_highest_20 | int }}%</span></div>{% endif %}
+      </div>
+      {% if b.benefits.pct_welfare is not none or b.benefits.pct_disability is not none %}
+      <div class="nb-subheading">Benefits</div>
+      <div class="stats-grid">
+        {% if b.benefits.pct_welfare is not none %}<div class="stat-row"><span>Welfare (bijstand)</span><span>{{ b.benefits.pct_welfare }}%</span></div>{% endif %}
+        {% if b.benefits.pct_disability is not none %}<div class="stat-row"><span>Disability (AO)</span><span>{{ b.benefits.pct_disability }}%</span></div>{% endif %}
+        {% if b.benefits.pct_unemployment is not none %}<div class="stat-row"><span>Unemployment (WW)</span><span>{{ b.benefits.pct_unemployment }}%</span></div>{% endif %}
+        {% if b.benefits.pct_pension is not none %}<div class="stat-row"><span>Pension (AOW)</span><span>{{ b.benefits.pct_pension }}%</span></div>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
+      <div class="stats-grid">
+        {% if w.income.recipients is not none %}<div class="stat-row"><span>Income recipients</span><span>{{ w.income.recipients | int }}</span></div>{% endif %}
+        {% if w.income.avg_per_recipient_k is not none %}<div class="stat-row"><span>Avg. per recipient</span><span>€ {{ (w.income.avg_per_recipient_k * 1000) | int | format_price }}</span></div>{% endif %}
+        {% if w.income.avg_per_resident_k is not none %}<div class="stat-row"><span>Avg. per resident</span><span>€ {{ (w.income.avg_per_resident_k * 1000) | int | format_price }}</span></div>{% endif %}
+        {% if w.income.avg_standardized_k is not none %}<div class="stat-row"><span>Standardized avg.</span><span>€ {{ (w.income.avg_standardized_k * 1000) | int | format_price }}</span></div>{% endif %}
+        {% if w.income.median_wealth_k is not none %}<div class="stat-row"><span>Median wealth</span><span>€ {{ (w.income.median_wealth_k * 1000) | int | format_price }}</span></div>{% endif %}
+        {% if w.income.pct_poverty is not none %}<div class="stat-row"><span>In poverty</span><span>{{ w.income.pct_poverty }}%</span></div>{% endif %}
+        {% if w.income.pct_near_poverty is not none %}<div class="stat-row"><span>Near poverty threshold</span><span>{{ w.income.pct_near_poverty }}%</span></div>{% endif %}
+        {% if w.income.pct_lowest_40 is not none %}<div class="stat-row"><span>Lowest 40% (persons)</span><span>{{ w.income.pct_lowest_40 | int }}%</span></div>{% endif %}
+        {% if w.income.pct_highest_20 is not none %}<div class="stat-row"><span>Highest 20% (persons)</span><span>{{ w.income.pct_highest_20 | int }}%</span></div>{% endif %}
+      </div>
+      {% if w.benefits.pct_welfare is not none or w.benefits.pct_disability is not none %}
+      <div class="nb-subheading">Benefits</div>
+      <div class="stats-grid">
+        {% if w.benefits.pct_welfare is not none %}<div class="stat-row"><span>Welfare (bijstand)</span><span>{{ w.benefits.pct_welfare }}%</span></div>{% endif %}
+        {% if w.benefits.pct_disability is not none %}<div class="stat-row"><span>Disability (AO)</span><span>{{ w.benefits.pct_disability }}%</span></div>{% endif %}
+        {% if w.benefits.pct_unemployment is not none %}<div class="stat-row"><span>Unemployment (WW)</span><span>{{ w.benefits.pct_unemployment }}%</span></div>{% endif %}
+        {% if w.benefits.pct_pension is not none %}<div class="stat-row"><span>Pension (AOW)</span><span>{{ w.benefits.pct_pension }}%</span></div>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% set b_has_edu = b.education.pct_low is not none or b.education.primary_pupils is not none %}
+  {% set w_has_edu = w.education.pct_low is not none or w.education.primary_pupils is not none %}
+  {% if b_has_edu or w_has_edu %}
+  <div class="nb-theme-label">Education</div>
+  <div class="neighbourhood-panels">
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
+      <div class="nb-subheading">Attainment (residents 15–75)</div>
+      <div class="stats-grid">
+        {% if b.education.pct_low is not none %}<div class="stat-row"><span>Low (vmbo/mbo1)</span><span>{{ b.education.pct_low | int }}%</span></div>{% endif %}
+        {% if b.education.pct_mid is not none %}<div class="stat-row"><span>Mid (havo/vwo/mbo)</span><span>{{ b.education.pct_mid | int }}%</span></div>{% endif %}
+        {% if b.education.pct_high is not none %}<div class="stat-row"><span>High (hbo/wo)</span><span>{{ b.education.pct_high | int }}%</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Students</div>
+      <div class="stats-grid">
+        {% if b.education.primary_pupils is not none %}<div class="stat-row"><span>Primary (po)</span><span>{{ b.education.primary_pupils | int }}</span></div>{% endif %}
+        {% if b.education.secondary_pupils is not none %}<div class="stat-row"><span>Secondary (vo)</span><span>{{ b.education.secondary_pupils | int }}</span></div>{% endif %}
+        {% if b.education.mbo_students is not none %}<div class="stat-row"><span>MBO</span><span>{{ b.education.mbo_students | int }}</span></div>{% endif %}
+        {% if b.education.hbo_students is not none %}<div class="stat-row"><span>HBO</span><span>{{ b.education.hbo_students | int }}</span></div>{% endif %}
+        {% if b.education.wo_students is not none %}<div class="stat-row"><span>WO (university)</span><span>{{ b.education.wo_students | int }}</span></div>{% endif %}
+      </div>
+    </div>
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
+      <div class="nb-subheading">Attainment (residents 15–75)</div>
+      <div class="stats-grid">
+        {% if w.education.pct_low is not none %}<div class="stat-row"><span>Low (vmbo/mbo1)</span><span>{{ w.education.pct_low | int }}%</span></div>{% endif %}
+        {% if w.education.pct_mid is not none %}<div class="stat-row"><span>Mid (havo/vwo/mbo)</span><span>{{ w.education.pct_mid | int }}%</span></div>{% endif %}
+        {% if w.education.pct_high is not none %}<div class="stat-row"><span>High (hbo/wo)</span><span>{{ w.education.pct_high | int }}%</span></div>{% endif %}
+      </div>
+      <div class="nb-subheading">Students</div>
+      <div class="stats-grid">
+        {% if w.education.primary_pupils is not none %}<div class="stat-row"><span>Primary (po)</span><span>{{ w.education.primary_pupils | int }}</span></div>{% endif %}
+        {% if w.education.secondary_pupils is not none %}<div class="stat-row"><span>Secondary (vo)</span><span>{{ w.education.secondary_pupils | int }}</span></div>{% endif %}
+        {% if w.education.mbo_students is not none %}<div class="stat-row"><span>MBO</span><span>{{ w.education.mbo_students | int }}</span></div>{% endif %}
+        {% if w.education.hbo_students is not none %}<div class="stat-row"><span>HBO</span><span>{{ w.education.hbo_students | int }}</span></div>{% endif %}
+        {% if w.education.wo_students is not none %}<div class="stat-row"><span>WO (university)</span><span>{{ w.education.wo_students | int }}</span></div>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% set b_has_energy = b.energy.avg_electricity_kwh is not none or b.energy.pct_solar_panels is not none %}
+  {% set w_has_energy = w.energy.avg_electricity_kwh is not none or w.energy.pct_solar_panels is not none %}
+  {% if b_has_energy or w_has_energy %}
+  <div class="nb-theme-label">Energy</div>
+  <div class="neighbourhood-panels">
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
+      <div class="stats-grid">
+        {% if b.energy.avg_electricity_kwh is not none %}<div class="stat-row"><span>Avg. electricity use</span><span>{{ b.energy.avg_electricity_kwh | int }} kWh</span></div>{% endif %}
+        {% if b.energy.avg_electricity_return_kwh is not none %}<div class="stat-row"><span>Avg. solar return</span><span>{{ b.energy.avg_electricity_return_kwh | int }} kWh</span></div>{% endif %}
+        {% if b.energy.avg_gas_m3 is not none %}<div class="stat-row"><span>Avg. gas use</span><span>{{ b.energy.avg_gas_m3 | int }} m³</span></div>{% endif %}
+        {% if b.energy.pct_district_heating is not none %}<div class="stat-row"><span>District heating</span><span>{{ b.energy.pct_district_heating | int }}%</span></div>{% endif %}
+        {% if b.energy.pct_solar_panels is not none %}<div class="stat-row"><span>Solar panels</span><span>{{ b.energy.pct_solar_panels | int }}%</span></div>{% endif %}
+        {% if b.energy.pct_electric_heating is not none %}<div class="stat-row"><span>Mainly electric heating</span><span>{{ b.energy.pct_electric_heating | int }}%</span></div>{% endif %}
+        {% if b.energy.ev_charge_points is not none %}<div class="stat-row"><span>EV charge points</span><span>{{ b.energy.ev_charge_points | int }}</span></div>{% endif %}
+      </div>
+    </div>
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
+      <div class="stats-grid">
+        {% if w.energy.avg_electricity_kwh is not none %}<div class="stat-row"><span>Avg. electricity use</span><span>{{ w.energy.avg_electricity_kwh | int }} kWh</span></div>{% endif %}
+        {% if w.energy.avg_electricity_return_kwh is not none %}<div class="stat-row"><span>Avg. solar return</span><span>{{ w.energy.avg_electricity_return_kwh | int }} kWh</span></div>{% endif %}
+        {% if w.energy.avg_gas_m3 is not none %}<div class="stat-row"><span>Avg. gas use</span><span>{{ w.energy.avg_gas_m3 | int }} m³</span></div>{% endif %}
+        {% if w.energy.pct_district_heating is not none %}<div class="stat-row"><span>District heating</span><span>{{ w.energy.pct_district_heating | int }}%</span></div>{% endif %}
+        {% if w.energy.pct_solar_panels is not none %}<div class="stat-row"><span>Solar panels</span><span>{{ w.energy.pct_solar_panels | int }}%</span></div>{% endif %}
+        {% if w.energy.pct_electric_heating is not none %}<div class="stat-row"><span>Mainly electric heating</span><span>{{ w.energy.pct_electric_heating | int }}%</span></div>{% endif %}
+        {% if w.energy.ev_charge_points is not none %}<div class="stat-row"><span>EV charge points</span><span>{{ w.energy.ev_charge_points | int }}</span></div>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Care ── #}
+  {% set b_has_care = b.care.youth_care_total is not none or b.care.wmo_total is not none %}
+  {% set w_has_care = w.care.youth_care_total is not none or w.care.wmo_total is not none %}
+  {% if b_has_care or w_has_care %}
+  <div class="nb-theme-label">Care</div>
+  <div class="neighbourhood-panels">
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
+      <div class="stats-grid">
+        {% if b.care.youth_care_total is not none %}<div class="stat-row"><span>Youth care recipients</span><span>{{ b.care.youth_care_total | int }}</span></div>{% endif %}
+        {% if b.care.pct_youth_care is not none %}<div class="stat-row"><span>— % of youth</span><span>{{ b.care.pct_youth_care }}%</span></div>{% endif %}
+        {% if b.care.wmo_total is not none %}<div class="stat-row"><span>Wmo clients</span><span>{{ b.care.wmo_total | int }}</span></div>{% endif %}
+        {% if b.care.pct_wmo is not none %}<div class="stat-row"><span>— % of residents</span><span>{{ b.care.pct_wmo }}%</span></div>{% endif %}
+      </div>
+    </div>
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
+      <div class="stats-grid">
+        {% if w.care.youth_care_total is not none %}<div class="stat-row"><span>Youth care recipients</span><span>{{ w.care.youth_care_total | int }}</span></div>{% endif %}
+        {% if w.care.pct_youth_care is not none %}<div class="stat-row"><span>— % of youth</span><span>{{ w.care.pct_youth_care }}%</span></div>{% endif %}
+        {% if w.care.wmo_total is not none %}<div class="stat-row"><span>Wmo clients</span><span>{{ w.care.wmo_total | int }}</span></div>{% endif %}
+        {% if w.care.pct_wmo is not none %}<div class="stat-row"><span>— % of residents</span><span>{{ w.care.pct_wmo }}%</span></div>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Area metadata ── #}
+  <div class="nb-theme-label">Area</div>
+  <div class="neighbourhood-panels">
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ b.name }} <span class="nb-level-tag">buurt</span></h3>
+      <div class="stats-grid">
+        {% if b.area.land_ha is not none %}<div class="stat-row"><span>Land area</span><span>{{ b.area.land_ha | int }} ha</span></div>{% endif %}
+        {% if b.area.water_ha is not none %}<div class="stat-row"><span>Water area</span><span>{{ b.area.water_ha | int }} ha</span></div>{% endif %}
+        {% if b.area.postcode is not none %}<div class="stat-row"><span>Most common postcode</span><span>{{ b.area.postcode }}</span></div>{% endif %}
+        {% if b.area.urbanisation is not none %}
+        <div class="stat-row"><span>Urbanisation</span><span>
+          {% set u = b.area.urbanisation | int %}
+          {% if u == 1 %}Very urban (1/5)
+          {% elif u == 2 %}Urban (2/5)
+          {% elif u == 3 %}Moderately urban (3/5)
+          {% elif u == 4 %}Low urban (4/5)
+          {% elif u == 5 %}Rural (5/5)
+          {% else %}{{ u }}{% endif %}
+        </span></div>
+        {% endif %}
+        {% if b.area.address_density is not none %}<div class="stat-row"><span>Address density</span><span>{{ b.area.address_density | int }} /km²</span></div>{% endif %}
+      </div>
+    </div>
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ w.name }} <span class="nb-level-tag">wijk</span></h3>
+      <div class="stats-grid">
+        {% if w.area.land_ha is not none %}<div class="stat-row"><span>Land area</span><span>{{ w.area.land_ha | int }} ha</span></div>{% endif %}
+        {% if w.area.water_ha is not none %}<div class="stat-row"><span>Water area</span><span>{{ w.area.water_ha | int }} ha</span></div>{% endif %}
+        {% if w.area.urbanisation is not none %}
+        <div class="stat-row"><span>Urbanisation</span><span>
+          {% set uw = w.area.urbanisation | int %}
+          {% if uw == 1 %}Very urban (1/5)
+          {% elif uw == 2 %}Urban (2/5)
+          {% elif uw == 3 %}Moderately urban (3/5)
+          {% elif uw == 4 %}Low urban (4/5)
+          {% elif uw == 5 %}Rural (5/5)
+          {% else %}{{ uw }}{% endif %}
+        </span></div>
+        {% endif %}
+        {% if w.area.address_density is not none %}<div class="stat-row"><span>Address density</span><span>{{ w.area.address_density | int }} /km²</span></div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <p class="text-muted small" style="margin-top:8px">
+    Source: CBS Kerncijfers wijken en buurten 2025 (dataset 86165NED) via StatLine OData v4 · CC BY 4.0 ·
+    Updated {{ "2026-03-31" }}. Quarterly updates; some themes (energy, income, labour) added later in the year.
+  </p>
+</div>
+{% else %}
+<div class="detail-section">
+  <p class="text-muted">Neighbourhood statistics unavailable for this listing.</p>
 </div>
 {% endif %}
 
-{# Broker #}
+{# ── Broker ── #}
 {% if listing.broker %}
-<div class="detail-section" style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
+<div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px">
   <span class="text-muted small">
     Listed by <strong>{{ listing.broker.name or '—' }}</strong>
     {% if listing.broker.association %} · {{ listing.broker.association }}{% endif %}

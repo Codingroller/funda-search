@@ -12,4 +12,13 @@ def _cbs_value(value):
     return value
 
 
+def _format_price(value):
+    """Format an integer as Dutch-style number: 670000 → '670.000'."""
+    try:
+        return f"{int(value):,}".replace(",", ".")
+    except (TypeError, ValueError):
+        return str(value)
+
+
 templates.env.filters["cbs_value"] = _cbs_value
+templates.env.filters["format_price"] = _format_price

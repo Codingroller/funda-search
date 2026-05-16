@@ -1,5 +1,12 @@
-"""PDOK CBS Wijken en Buurten 2025 — OGC API client with SQLite persistence."""
+"""CBS StatLine OData v4 — Kerncijfers wijken en buurten 2025 (dataset 86165NED).
 
+Queried by buurtcode (e.g. 'BU03920301') which pyfunda exposes directly as
+address.neighbourhood_identifier — no geocoding needed.
+Wijk code is derived from the buurt code: 'WK' + buurtcode[2:8].
+Results are persisted to SQLite (cbs_buurt / cbs_wijk) with a 365-day TTL.
+"""
+
+import asyncio
 import json
 from datetime import datetime, timedelta
 
@@ -9,136 +16,331 @@ from sqlalchemy import select
 from app.db import AsyncSessionLocal
 from app.models import CbsBuurt, CbsWijk
 
-_CBS_BASE = "https://api.pdok.nl/cbs/wijken-en-buurten-2025/ogc/v1/collections"
-_BBOX_DELTA = 0.003   # ~300 m — wide enough to catch the containing polygon
-_TTL_DAYS = 365       # CBS publishes annually
+_ODATA_BASE = "https://datasets.cbs.nl/odata/v1/CBS/86165NED"
+_TTL_DAYS = 365
 
 
 def _is_stale(fetched_at: datetime) -> bool:
     return datetime.utcnow() - fetched_at > timedelta(days=_TTL_DAYS)
 
 
-def _bbox_from_feature(feat: dict, fallback_lon: float, fallback_lat: float) -> tuple[float, float, float, float]:
-    """Extract [min_lon, min_lat, max_lon, max_lat] from a GeoJSON feature."""
-    if "bbox" in feat:
-        b = feat["bbox"]
-        return b[0], b[1], b[2], b[3]
-    geom = feat.get("geometry") or {}
-    gtype = geom.get("type", "")
-    coords = geom.get("coordinates", [])
+# ---------------------------------------------------------------------------
+# Measure → structured output mapping
+# 70 measures have data in the current 2025 dataset release.
+# ---------------------------------------------------------------------------
+
+def _v(obs: dict, code: str):
+    """Return value for a measure code, or None if missing/suppressed."""
+    return obs.get(code)
+
+
+def _structure(obs: dict, code: str, name: str, gemeente: str) -> dict:
+    """Map flat {measure_code: value} to a themed structure for the template."""
+    return {
+        "code": code,
+        "name": name,
+        "gemeente": gemeente,
+        # -- Population --
+        "population": {
+            "total":       _v(obs, "T001036"),
+            "men":         _v(obs, "3000"),
+            "women":       _v(obs, "4000"),
+            "age_0_15":    _v(obs, "10680"),
+            "age_15_25":   _v(obs, "53050"),
+            "age_25_45":   _v(obs, "53310"),
+            "age_45_65":   _v(obs, "53715"),
+            "age_65plus":  _v(obs, "80200"),
+            # births / deaths — available in some quarterly releases
+            "births_total":   _v(obs, "M000173_1"),
+            "births_rate":    _v(obs, "M000173_2"),
+            "deaths_total":   _v(obs, "M000179_1"),
+            "deaths_rate":    _v(obs, "M000179_2"),
+        },
+        # -- Marital status --
+        "marital": {
+            "unmarried": _v(obs, "1010"),
+            "married":   _v(obs, "1020"),
+            "divorced":  _v(obs, "1080"),
+            "widowed":   _v(obs, "1050"),
+        },
+        # -- Heritage (CBS 2022 classification) --
+        # _1 = all residents by background; _2 = born in NL by background;
+        # _3 = born abroad by background.
+        "heritage": {
+            "total_nl":                   _v(obs, "1012600_1"),
+            "total_europe":               _v(obs, "H007933_1"),
+            "total_outside_europe":       _v(obs, "H008859_1"),
+            "born_nl_heritage_nl":        _v(obs, "1012600_2"),
+            "born_nl_heritage_europe":    _v(obs, "H007933_2"),
+            "born_nl_heritage_outside":   _v(obs, "H008859_2"),
+            "born_abroad_heritage_europe":  _v(obs, "H007933_3"),
+            "born_abroad_heritage_outside": _v(obs, "H008859_3"),
+        },
+        # -- Households --
+        "households": {
+            "total":           _v(obs, "1050010_2"),
+            "single_person":   _v(obs, "1050015"),
+            "without_children":_v(obs, "1016040"),
+            "with_children":   _v(obs, "1016030"),
+            "avg_size":        _v(obs, "M000114"),
+            "density_per_km2": _v(obs, "M000100"),
+        },
+        # -- Housing stock --
+        "housing": {
+            "total_stock":       _v(obs, "M000297"),
+            "non_residential":   _v(obs, "M008258"),
+            "vacant":            _v(obs, "M008208"),
+            "woz_value_k":       _v(obs, "M001642"),  # avg WOZ ×1000 €
+            "pct_owner":         _v(obs, "1014800"),
+            "pct_rental":        _v(obs, "1014850_2"),
+            "pct_rental_corp":   _v(obs, "A047047"),
+            "pct_rental_other":  _v(obs, "A047048"),
+            "pct_built_over_10y":_v(obs, "M008209"),
+            "pct_built_last_10y":_v(obs, "M008210"),
+            "pct_gas_free":      _v(obs, "M008295"),
+            "pct_gas_heated":    _v(obs, "M008296"),
+            # new builds — available in some releases
+            "new_builds":        _v(obs, "M003003"),
+            "new_non_residential": _v(obs, "M008211"),
+        },
+        # -- Housing type (percentages) --
+        "housing_type": {
+            "pct_single_family": _v(obs, "ZW10290"),
+            "pct_terraced":      _v(obs, "ZW25805"),
+            "pct_corner":        _v(obs, "ZW25806"),
+            "pct_semi_detached": _v(obs, "ZW10300"),
+            "pct_detached":      _v(obs, "ZW10320"),
+            "pct_apartment":     _v(obs, "ZW10340"),
+        },
+        # -- Energy (quarterly additions — may be None) --
+        "energy": {
+            "avg_electricity_kwh":        _v(obs, "M000221_2"),
+            "avg_electricity_return_kwh": _v(obs, "M008294"),
+            "avg_gas_m3":                 _v(obs, "M000219_2"),
+            "pct_district_heating":       _v(obs, "M000369"),
+            "pct_solar_panels":           _v(obs, "M008297"),
+            "pct_electric_heating":       _v(obs, "M008298"),
+            "ev_charge_points":           _v(obs, "M008299"),
+        },
+        # -- Education (quarterly additions — may be None) --
+        "education": {
+            "primary_pupils":    _v(obs, "A025301"),
+            "secondary_pupils":  _v(obs, "T001345"),
+            "mbo_students":      _v(obs, "A041867"),
+            "hbo_students":      _v(obs, "A025294"),
+            "wo_students":       _v(obs, "A025297"),
+            "pct_low":           _v(obs, "2018700"),
+            "pct_mid":           _v(obs, "2018740"),
+            "pct_high":          _v(obs, "2018790"),
+        },
+        # -- Labour (quarterly additions — may be None) --
+        "labour": {
+            "working_population":   _v(obs, "M008300"),
+            "net_participation_pct":_v(obs, "M001796_2"),
+            "pct_employees":        _v(obs, "2021320"),
+            "pct_permanent":        _v(obs, "2021330"),
+            "pct_flex":             _v(obs, "2021340"),
+            "pct_self_employed":    _v(obs, "2021380"),
+        },
+        # -- Income (added Jan 2026, full 2025 data end 2026) --
+        "income": {
+            "recipients":          _v(obs, "M000232"),
+            "avg_per_recipient_k": _v(obs, "M000223"),  # ×1000 €
+            "avg_per_resident_k":  _v(obs, "M000224"),  # ×1000 €
+            "pct_lowest_40":       _v(obs, "D000187"),
+            "pct_highest_20":      _v(obs, "D000185"),
+            "pct_poverty":         _v(obs, "M008349"),
+            "pct_near_poverty":    _v(obs, "M008348"),
+            "avg_standardized_k":  _v(obs, "M000222"),  # ×1000 €
+            "pct_hh_lowest_40":    _v(obs, "D000186"),
+            "pct_hh_highest_20":   _v(obs, "D000184"),
+            "median_wealth_k":     _v(obs, "M000939"),  # ×1000 €
+        },
+        # -- Social benefits (quarterly additions — may be None) --
+        "benefits": {
+            "pct_welfare":       _v(obs, "D006842"),
+            "pct_disability":    _v(obs, "D006837"),
+            "pct_unemployment":  _v(obs, "D001827"),
+            "pct_pension":       _v(obs, "D000193"),
+        },
+        # -- Care (quarterly additions — may be None) --
+        "care": {
+            "youth_care_total":  _v(obs, "T001203"),
+            "pct_youth_care":    _v(obs, "A045561"),
+            "wmo_total":         _v(obs, "M001342_1"),
+            "pct_wmo":           _v(obs, "M001342_2"),
+        },
+        # -- Businesses --
+        "businesses": {
+            "total":            _v(obs, "M000200_2"),
+            "agriculture":      _v(obs, "301000"),
+            "industry":         _v(obs, "300003"),
+            "retail_hosp":      _v(obs, "300005"),
+            "transport_ict":    _v(obs, "383105"),
+            "finance_re":       _v(obs, "300009"),
+            "business_svc":     _v(obs, "300010"),
+            "gov_edu_health":   _v(obs, "300012"),
+            "culture_other":    _v(obs, "300014"),
+        },
+        # -- Mobility --
+        "mobility": {
+            "cars_total":        _v(obs, "A018943_2"),
+            "cars_petrol":       _v(obs, "A019276"),
+            "cars_other_fuel":   _v(obs, "D001045"),
+            "cars_per_household":_v(obs, "M000368"),
+            "cars_per_km2":      _v(obs, "A018943_4"),
+            "motorcycles":       _v(obs, "A018944"),
+        },
+        # -- Proximity (km, weighted average distance) --
+        "proximity": {
+            "gp_km":         _v(obs, "D000028"),
+            "supermarket_km":_v(obs, "D000025"),
+            "childcare_km":  _v(obs, "D000029"),
+            "school_km":     _v(obs, "D000045"),
+            "schools_3km":   _v(obs, "D000263"),
+        },
+        # -- Area & urbanisation --
+        "area": {
+            "total_ha":       _v(obs, "T001455_2"),
+            "land_ha":        _v(obs, "A047044"),
+            "water_ha":       _v(obs, "A047040"),
+            "postcode":       _v(obs, "PC000C"),
+            "urbanisation":   _v(obs, "ST0001"),   # 1 (very urban) – 5 (rural)
+            "address_density":_v(obs, "ST0003"),   # addresses / km²
+            "coverage_pct":   _v(obs, "M000217"),
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# CBS OData fetch helpers
+# ---------------------------------------------------------------------------
+
+async def _fetch_observations(region_code: str) -> dict:
+    """Return {measure_code: value} for one region. Empty dict on error."""
     try:
-        if gtype == "Polygon":
-            flat = [p for ring in coords for p in ring]
-        elif gtype == "MultiPolygon":
-            flat = [p for poly in coords for ring in poly for p in ring]
-        else:
-            flat = []
-        if flat:
-            lons = [p[0] for p in flat]
-            lats = [p[1] for p in flat]
-            return min(lons), min(lats), max(lons), max(lats)
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{_ODATA_BASE}/Observations",
+                params={"$filter": f"WijkenEnBuurten eq '{region_code}'"},
+            )
+            resp.raise_for_status()
+            obs: dict = {}
+            for r in resp.json().get("value", []):
+                sv = r.get("StringValue") or ""
+                obs[r["Measure"]] = r["Value"] if r["Value"] is not None else (sv.strip() or None)
+            return obs
     except Exception:
-        pass
-    delta = _BBOX_DELTA * 3
-    return fallback_lon - delta, fallback_lat - delta, fallback_lon + delta, fallback_lat + delta
+        return {}
 
 
-async def _fetch_feature(collection: str, lat: float, lon: float) -> dict | None:
-    bbox = f"{lon - _BBOX_DELTA},{lat - _BBOX_DELTA},{lon + _BBOX_DELTA},{lat + _BBOX_DELTA}"
+async def _fetch_region_name(code: str) -> str:
+    """Return the display name for a buurt or wijk code."""
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(
-                f"{_CBS_BASE}/{collection}/items",
-                params={"bbox": bbox, "limit": 1},
+                f"{_ODATA_BASE}/WijkenEnBuurtenCodes",
+                params={"$filter": f"Identifier eq '{code}'", "$select": "Title"},
             )
             resp.raise_for_status()
-            features = resp.json().get("features", [])
-            return features[0] if features else None
+            items = resp.json().get("value", [])
+            return items[0]["Title"] if items else code
     except Exception:
+        return code
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+async def get_neighbourhood_stats(neighbourhood_identifier: str) -> dict | None:
+    """Return structured CBS stats for buurt + its parent wijk, or None on failure.
+
+    neighbourhood_identifier is the CBS buurtcode from pyfunda's
+    address.neighbourhood_identifier (e.g. 'BU03920301').
+    Wijk code is derived as 'WK' + buurtcode[2:8].
+    """
+    if not neighbourhood_identifier or not neighbourhood_identifier.upper().startswith("BU"):
         return None
 
+    buurtcode = neighbourhood_identifier.upper()
+    wijkcode = "WK" + buurtcode[2:8]
 
-async def get_neighbourhood_stats(lat: float, lon: float) -> dict | None:
-    """Return {"buurt": {props}, "wijk": {props}} using DB cache, or None on failure."""
+    # -- DB cache check --
     async with AsyncSessionLocal() as db:
-        buurt_row = (await db.execute(
-            select(CbsBuurt).where(
-                CbsBuurt.bbox_min_lon <= lon,
-                CbsBuurt.bbox_max_lon >= lon,
-                CbsBuurt.bbox_min_lat <= lat,
-                CbsBuurt.bbox_max_lat >= lat,
-            )
-        )).scalars().first()
+        buurt_row = await db.get(CbsBuurt, buurtcode)
+        wijk_row = await db.get(CbsWijk, wijkcode)
 
-        wijk_row = None
-        if buurt_row and not _is_stale(buurt_row.fetched_at) and buurt_row.wijkcode:
-            wijk_row = (await db.execute(
-                select(CbsWijk).where(CbsWijk.wijkcode == buurt_row.wijkcode)
-            )).scalars().first()
-            if wijk_row and _is_stale(wijk_row.fetched_at):
-                wijk_row = None
+        b_fresh = buurt_row and not _is_stale(buurt_row.fetched_at)
+        w_fresh = wijk_row and not _is_stale(wijk_row.fetched_at)
 
-        if buurt_row and not _is_stale(buurt_row.fetched_at) and wijk_row:
+        if b_fresh and w_fresh:
             return {
-                "buurt": json.loads(buurt_row.properties_json),
-                "wijk": json.loads(wijk_row.properties_json),
+                "buurt": _structure(
+                    json.loads(buurt_row.properties_json),
+                    buurtcode, buurt_row.buurtnaam, buurt_row.gemeentecode or "",
+                ),
+                "wijk": _structure(
+                    json.loads(wijk_row.properties_json),
+                    wijkcode, wijk_row.wijknaam, wijk_row.gemeentecode or "",
+                ),
             }
 
-    # Cache miss / stale — hit PDOK
-    buurt_feat = await _fetch_feature("buurten", lat, lon)
-    wijk_feat = await _fetch_feature("wijken", lat, lon)
+    # -- Fetch from CBS OData in parallel --
+    buurt_obs, wijk_obs, buurt_name, wijk_name = await asyncio.gather(
+        _fetch_observations(buurtcode),
+        _fetch_observations(wijkcode),
+        _fetch_region_name(buurtcode),
+        _fetch_region_name(wijkcode),
+    )
 
-    if not buurt_feat and not wijk_feat:
+    if not buurt_obs and not wijk_obs:
         return None
+
+    gemeente = (buurt_obs or wijk_obs).get("GM000C", "")
 
     now = datetime.utcnow()
     async with AsyncSessionLocal() as db:
-        if buurt_feat:
-            props = buurt_feat.get("properties", {})
-            code = props.get("buurtcode", "")
-            if code:
-                bb = _bbox_from_feature(buurt_feat, lon, lat)
-                row = await db.get(CbsBuurt, code)
-                if row:
-                    row.properties_json = json.dumps(props)
-                    row.fetched_at = now
-                else:
-                    db.add(CbsBuurt(
-                        buurtcode=code,
-                        buurtnaam=props.get("buurtnaam", ""),
-                        wijkcode=props.get("wijkcode"),
-                        gemeentecode=props.get("gemeentecode"),
-                        bbox_min_lon=bb[0], bbox_min_lat=bb[1],
-                        bbox_max_lon=bb[2], bbox_max_lat=bb[3],
-                        properties_json=json.dumps(props),
-                        fetched_at=now,
-                    ))
+        if buurt_obs:
+            row = await db.get(CbsBuurt, buurtcode)
+            payload = json.dumps(buurt_obs)
+            if row:
+                row.properties_json = payload
+                row.buurtnaam = buurt_name
+                row.fetched_at = now
+            else:
+                db.add(CbsBuurt(
+                    buurtcode=buurtcode,
+                    buurtnaam=buurt_name,
+                    wijkcode=wijkcode,
+                    gemeentecode=gemeente,
+                    bbox_min_lon=0.0, bbox_min_lat=0.0,
+                    bbox_max_lon=0.0, bbox_max_lat=0.0,
+                    properties_json=payload,
+                    fetched_at=now,
+                ))
 
-        if wijk_feat:
-            props_w = wijk_feat.get("properties", {})
-            code_w = props_w.get("wijkcode", "")
-            if code_w:
-                bb_w = _bbox_from_feature(wijk_feat, lon, lat)
-                row_w = await db.get(CbsWijk, code_w)
-                if row_w:
-                    row_w.properties_json = json.dumps(props_w)
-                    row_w.fetched_at = now
-                else:
-                    db.add(CbsWijk(
-                        wijkcode=code_w,
-                        wijknaam=props_w.get("wijknaam", ""),
-                        gemeentecode=props_w.get("gemeentecode"),
-                        bbox_min_lon=bb_w[0], bbox_min_lat=bb_w[1],
-                        bbox_max_lon=bb_w[2], bbox_max_lat=bb_w[3],
-                        properties_json=json.dumps(props_w),
-                        fetched_at=now,
-                    ))
+        if wijk_obs:
+            row_w = await db.get(CbsWijk, wijkcode)
+            payload_w = json.dumps(wijk_obs)
+            if row_w:
+                row_w.properties_json = payload_w
+                row_w.wijknaam = wijk_name
+                row_w.fetched_at = now
+            else:
+                db.add(CbsWijk(
+                    wijkcode=wijkcode,
+                    wijknaam=wijk_name,
+                    gemeentecode=gemeente,
+                    bbox_min_lon=0.0, bbox_min_lat=0.0,
+                    bbox_max_lon=0.0, bbox_max_lat=0.0,
+                    properties_json=payload_w,
+                    fetched_at=now,
+                ))
 
         await db.commit()
 
-    result: dict = {}
-    if buurt_feat:
-        result["buurt"] = buurt_feat.get("properties", {})
-    if wijk_feat:
-        result["wijk"] = wijk_feat.get("properties", {})
-    return result or None
+    return {
+        "buurt": _structure(buurt_obs, buurtcode, buurt_name, gemeente),
+        "wijk":  _structure(wijk_obs,  wijkcode,  wijk_name,  gemeente),
+    }

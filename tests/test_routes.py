@@ -179,7 +179,7 @@ async def test_listing_detail_renders(authed, monkeypatch):
     import app.routes.queries as qroutes
     async def _fake_detail(gid):
         return _FAKE_LISTING
-    async def _fake_cbs(lat, lon):
+    async def _fake_cbs(identifier):
         return None
     monkeypatch.setattr(qroutes, "get_listing_detail", _fake_detail)
     monkeypatch.setattr(qroutes, "get_neighbourhood_stats", _fake_cbs)
@@ -192,38 +192,35 @@ async def test_listing_detail_renders(authed, monkeypatch):
 
 async def test_listing_detail_with_cbs(authed, monkeypatch):
     import app.routes.queries as qroutes
+    def _make_structured(name, residents, wijk_name=None):
+        empty = {k: None for k in ["total","men","women","age_0_15","age_15_25","age_25_45","age_45_65","age_65plus","births_total","births_rate","deaths_total","deaths_rate"]}
+        empty["total"] = residents
+        return {
+            "code": "BU03920301", "name": name, "gemeente": "Haarlem",
+            "population": empty,
+            "marital": {k: None for k in ["unmarried","married","divorced","widowed"]},
+            "heritage": {k: None for k in ["total_nl","total_europe","total_outside_europe","born_nl_heritage_nl","born_nl_heritage_europe","born_nl_heritage_outside","born_abroad_heritage_europe","born_abroad_heritage_outside"]},
+            "households": {"total": None, "single_person": None, "without_children": None, "with_children": None, "avg_size": None, "density_per_km2": None},
+            "housing": {k: None for k in ["total_stock","non_residential","vacant","woz_value_k","pct_owner","pct_rental","pct_rental_corp","pct_rental_other","pct_built_over_10y","pct_built_last_10y","pct_gas_free","pct_gas_heated","new_builds","new_non_residential"]},
+            "housing_type": {k: None for k in ["pct_single_family","pct_terraced","pct_corner","pct_semi_detached","pct_detached","pct_apartment"]},
+            "energy": {k: None for k in ["avg_electricity_kwh","avg_electricity_return_kwh","avg_gas_m3","pct_district_heating","pct_solar_panels","pct_electric_heating","ev_charge_points"]},
+            "education": {k: None for k in ["primary_pupils","secondary_pupils","mbo_students","hbo_students","wo_students","pct_low","pct_mid","pct_high"]},
+            "labour": {k: None for k in ["working_population","net_participation_pct","pct_employees","pct_permanent","pct_flex","pct_self_employed"]},
+            "income": {k: None for k in ["recipients","avg_per_recipient_k","avg_per_resident_k","pct_lowest_40","pct_highest_20","pct_poverty","pct_near_poverty","avg_standardized_k","pct_hh_lowest_40","pct_hh_highest_20","median_wealth_k"]},
+            "benefits": {k: None for k in ["pct_welfare","pct_disability","pct_unemployment","pct_pension"]},
+            "care": {k: None for k in ["youth_care_total","pct_youth_care","wmo_total","pct_wmo"]},
+            "businesses": {k: None for k in ["total","agriculture","industry","retail_hosp","transport_ict","finance_re","business_svc","gov_edu_health","culture_other"]},
+            "mobility": {k: None for k in ["cars_total","cars_petrol","cars_other_fuel","cars_per_household","cars_per_km2","motorcycles"]},
+            "proximity": {k: None for k in ["gp_km","supermarket_km","childcare_km","school_km","schools_3km"]},
+            "area": {k: None for k in ["total_ha","land_ha","water_ha","postcode","urbanisation","address_density","coverage_pct"]},
+        }
+
     async def _fake_detail(gid):
         return _FAKE_LISTING
-    async def _fake_cbs(lat, lon):
+    async def _fake_cbs(identifier):
         return {
-            "buurt": {"buurtnaam": "Garenkokerskwartier", "aantal_inwoners": 1985,
-                      "aantal_huishoudens": 970, "bevolkingsdichtheid_inwoners_per_km2": 10451,
-                      "gemiddelde_huishoudsgrootte": 2.0, "oppervlakte_land_in_ha": 19,
-                      "percentage_eenpersoonshuishoudens": 42,
-                      "percentage_huishoudens_met_kinderen": 29,
-                      "percentage_huishoudens_zonder_kinderen": 29,
-                      "percentage_personen_0_tot_15_jaar": 16,
-                      "percentage_personen_15_tot_25_jaar": 10,
-                      "percentage_personen_25_tot_45_jaar": 26,
-                      "percentage_personen_45_tot_65_jaar": 30,
-                      "percentage_personen_65_jaar_en_ouder": 18,
-                      "percentage_met_herkomstland_nederland": 70,
-                      "percentage_met_herkomstland_uit_europa_excl_nl": 15,
-                      "percentage_met_herkomstland_buiten_europa": 15},
-            "wijk": {"wijknaam": "Zijlwegkwartier", "aantal_inwoners": 8180,
-                     "aantal_huishoudens": 4105, "bevolkingsdichtheid_inwoners_per_km2": 12654,
-                     "gemiddelde_huishoudsgrootte": 2.0, "oppervlakte_land_in_ha": 65,
-                     "percentage_eenpersoonshuishoudens": 44,
-                     "percentage_huishoudens_met_kinderen": 31,
-                     "percentage_huishoudens_zonder_kinderen": 25,
-                     "percentage_personen_0_tot_15_jaar": 16,
-                     "percentage_personen_15_tot_25_jaar": 10,
-                     "percentage_personen_25_tot_45_jaar": 30,
-                     "percentage_personen_45_tot_65_jaar": 29,
-                     "percentage_personen_65_jaar_en_ouder": 15,
-                     "percentage_met_herkomstland_nederland": 65,
-                     "percentage_met_herkomstland_uit_europa_excl_nl": 15,
-                     "percentage_met_herkomstland_buiten_europa": 15},
+            "buurt": _make_structured("Garenkokerskwartier", 1985),
+            "wijk":  _make_structured("Zijlwegkwartier", 8180),
         }
     monkeypatch.setattr(qroutes, "get_listing_detail", _fake_detail)
     monkeypatch.setattr(qroutes, "get_neighbourhood_stats", _fake_cbs)

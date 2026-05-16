@@ -290,8 +290,8 @@ async def listing_detail_page(request: Request, global_id: str):
         raise HTTPException(502, detail="Could not load listing from Funda")
 
     cbs = None
-    if listing.get("lat") and listing.get("lon"):
-        cbs = await get_neighbourhood_stats(listing["lat"], listing["lon"])
+    if listing.get("neighbourhood_identifier"):
+        cbs = await get_neighbourhood_stats(listing["neighbourhood_identifier"])
 
     back_url = request.headers.get("referer") or "/"
     return templates.TemplateResponse(
