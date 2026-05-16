@@ -24,8 +24,14 @@
       class="btn btn-primary"
       hx-post="/queries/{{ query.id }}/run"
       hx-disabled-elt="this"
+      hx-indicator="#run-spinner"
     >Run now</button>
   </div>
+</div>
+
+<div id="run-spinner" class="spinner-overlay htmx-indicator">
+  <div class="spinner-ring"></div>
+  <p class="spinner-text">Fetching listings…</p>
 </div>
 
 <h2>Recent runs</h2>

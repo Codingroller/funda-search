@@ -30,9 +30,18 @@ def cache_photo_sync(photo_url: str) -> str | None:
             resp.raise_for_status()
 
         img = Image.open(io.BytesIO(resp.content)).convert("RGB")
-        new_w = max(1, img.width // 4)
-        new_h = max(1, img.height // 4)
-        img = img.resize((new_w, new_h), Image.LANCZOS)
+        # Crop to 4:3 centre, then resize to fit the card's photo panel (320×240 @2x)
+        target_ratio = 4 / 3
+        src_ratio = img.width / img.height
+        if src_ratio > target_ratio:
+            new_w = int(img.height * target_ratio)
+            left = (img.width - new_w) // 2
+            img = img.crop((left, 0, left + new_w, img.height))
+        elif src_ratio < target_ratio:
+            new_h = int(img.width / target_ratio)
+            top = (img.height - new_h) // 2
+            img = img.crop((0, top, img.width, top + new_h))
+        img = img.resize((320, 240), Image.LANCZOS)
         img.save(local_path, "JPEG", quality=82, optimize=True)
 
         return f"/img/{filename}"
