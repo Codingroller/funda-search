@@ -1,19 +1,25 @@
 <div class="listing-card">
-  <div class="listing-body">
-    <div class="listing-price">{{ listing.price or 'Price on request' }}</div>
-    {% if listing.price_per_m2 %}<div class="listing-ppm2">{{ listing.price_per_m2 }}</div>{% endif %}
-    <div class="listing-title">
-      <a href="{{ listing.url }}" target="_blank">{{ listing.title }}</a>
+  <div class="listing-top">
+    <div class="listing-info">
+      <div class="listing-price">{{ listing.price or 'Price on request' }}</div>
+      {% if listing.price_per_m2 %}<div class="listing-ppm2">{{ listing.price_per_m2 }}</div>{% endif %}
+      <div class="listing-title">
+        <a href="{{ listing.url }}" target="_blank">{{ listing.title }}</a>
+      </div>
     </div>
+    {% if listing.photo_url %}
+    <a href="{{ listing.url }}" target="_blank" class="listing-photo-link">
+      <img src="{{ listing.photo_url }}" alt="{{ listing.title }}" class="listing-photo" loading="lazy">
+    </a>
+    {% endif %}
+  </div>
+  <div class="listing-bottom">
     <div class="listing-meta">
       {% if listing.living_area %}<span>{{ listing.living_area }} m²</span>{% endif %}
       {% if listing.rooms_count %}<span>{{ listing.rooms_count }} rooms</span>{% endif %}
-      {% if listing.energy_label %}<span class="energy-label label-{{ listing.energy_label | replace('+', 'p') }}">{{ listing.energy_label }}</span>{% endif %}
     </div>
+    {% if listing.energy_label %}
+    <span class="energy-label label-{{ listing.energy_label | replace('+', 'p') }}">{{ listing.energy_label }}</span>
+    {% endif %}
   </div>
-  {% if listing.photo_url %}
-  <a href="{{ listing.url }}" target="_blank" class="listing-photo-link">
-    <img src="{{ listing.photo_url }}" alt="{{ listing.title }}" class="listing-photo" loading="lazy">
-  </a>
-  {% endif %}
 </div>
