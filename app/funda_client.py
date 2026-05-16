@@ -9,11 +9,21 @@ except ImportError:
 _pool = ThreadPoolExecutor(max_workers=4)
 
 
+def _fmt_price_per_m2(amount: int | None, area: int | None) -> str | None:
+    if not amount or not area:
+        return None
+    ppm = amount // area
+    # Format with period as thousands separator (Dutch convention)
+    return f"€ {ppm:,} / m²".replace(",", ".")
+
+
 def _listing_to_dict(listing) -> dict:
     price = None
+    price_amount = None
     if listing.price:
+        price_amount = getattr(listing.price, "amount", None)
         price = getattr(listing.price, "formatted", None) or (
-            f"€{listing.price.amount:,}" if getattr(listing.price, "amount", None) else None
+            f"€{price_amount:,}" if price_amount else None
         )
 
     photo_url = None
@@ -39,6 +49,7 @@ def _listing_to_dict(listing) -> dict:
         "title": listing.title,
         "city": listing.city,
         "price": price,
+        "price_per_m2": _fmt_price_per_m2(price_amount, getattr(listing, "living_area", None)),
         "living_area": getattr(listing, "living_area", None),
         "rooms_count": getattr(listing, "rooms_count", None),
         "bedrooms": getattr(listing, "bedrooms", None),

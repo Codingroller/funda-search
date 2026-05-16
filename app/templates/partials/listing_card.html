@@ -6,6 +6,7 @@
   {% endif %}
   <div class="listing-body">
     <div class="listing-price">{{ listing.price or 'Price on request' }}</div>
+    {% if listing.price_per_m2 %}<div class="listing-ppm2">{{ listing.price_per_m2 }}</div>{% endif %}
     <div class="listing-title">
       <a href="{{ listing.url }}" target="_blank">{{ listing.title }}</a>
     </div>

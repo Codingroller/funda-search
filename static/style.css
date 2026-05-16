@@ -186,7 +186,8 @@ a:hover { text-decoration: underline; }
 .listing-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .listing-photo { width: 100%; height: 140px; object-fit: cover; display: block; }
 .listing-body { padding: 10px 12px; }
-.listing-price { font-weight: 700; font-size: 15px; margin-bottom: 2px; }
+.listing-price { font-weight: 700; font-size: 15px; margin-bottom: 1px; }
+.listing-ppm2 { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
 .listing-title { font-size: 13px; margin-bottom: 6px; }
 .listing-title a { color: var(--text); }
 .listing-meta { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); }
