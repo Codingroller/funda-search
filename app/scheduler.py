@@ -44,8 +44,7 @@ async def run_query_job(query_id: int) -> None:
             for listing in new_listings:
                 db.add(SeenListing(query_id=query_id, global_id=listing["global_id"]))
 
-            user_row = await db.execute(select(User))
-            user = user_row.scalar_one_or_none()
+            user = await db.get(User, query.user_id)
 
             if user and new_listings:
                 from app.notifier import send_ntfy

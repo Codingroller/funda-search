@@ -16,17 +16,24 @@ from app.main import app
 from app.models import User
 
 _PASSWORD = "testpassword123"
+_USERNAME = "testadmin"
+_USERNAME2 = "testuser2"
 
 
 @pytest.fixture(autouse=True)
-async def _db(monkeypatch):
-    """Create tables and seed one user before each test in this module."""
+async def _db():
+    """Create tables and seed one admin user before each test."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(User))
+        result = await db.execute(select(User).where(User.username == _USERNAME))
         if not result.scalar_one_or_none():
-            db.add(User(password_hash=hash_password(_PASSWORD), ntfy_topic="test-topic"))
+            db.add(User(
+                username=_USERNAME,
+                password_hash=hash_password(_PASSWORD),
+                ntfy_topic="test-topic",
+                is_admin=True,
+            ))
             await db.commit()
 
 
@@ -43,13 +50,36 @@ async def anon():
 
 @pytest.fixture
 async def authed():
-    """Client with a valid session cookie."""
+    """Client authenticated as the admin user."""
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
         base_url="https://test",
         follow_redirects=False,
     ) as ac:
-        r = await ac.post("/login", data={"password": _PASSWORD})
+        r = await ac.post("/login", data={"username": _USERNAME, "password": _PASSWORD})
+        assert r.status_code == 302, f"Login failed ({r.status_code}): {r.text[:200]}"
+        yield ac
+
+
+@pytest.fixture
+async def authed2():
+    """Client authenticated as a second non-admin user."""
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).where(User.username == _USERNAME2))
+        if not result.scalar_one_or_none():
+            db.add(User(
+                username=_USERNAME2,
+                password_hash=hash_password(_PASSWORD),
+                ntfy_topic="test-topic-2",
+                is_admin=False,
+            ))
+            await db.commit()
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="https://test",
+        follow_redirects=False,
+    ) as ac:
+        r = await ac.post("/login", data={"username": _USERNAME2, "password": _PASSWORD})
         assert r.status_code == 302, f"Login failed ({r.status_code}): {r.text[:200]}"
         yield ac
 
@@ -70,13 +100,18 @@ async def test_login_page_renders(anon):
 
 
 async def test_login_wrong_password_returns_401(anon):
-    r = await anon.post("/login", data={"password": "wrong"})
+    r = await anon.post("/login", data={"username": _USERNAME, "password": "wrong"})
     assert r.status_code == 401
-    assert b"Incorrect password" in r.content
+    assert b"Incorrect" in r.content
 
 
-async def test_login_correct_password_redirects(anon):
-    r = await anon.post("/login", data={"password": _PASSWORD})
+async def test_login_wrong_username_returns_401(anon):
+    r = await anon.post("/login", data={"username": "nobody", "password": _PASSWORD})
+    assert r.status_code == 401
+
+
+async def test_login_correct_credentials_redirects(anon):
+    r = await anon.post("/login", data={"username": _USERNAME, "password": _PASSWORD})
     assert r.status_code == 302
     assert r.headers["location"] == "/"
 
@@ -463,3 +498,139 @@ async def test_listing_card_contains_view_details_link(authed, monkeypatch):
     r = await authed.get(f"/queries/{query.id}")
     assert r.status_code == 200
     assert b"/listings/99887766" in r.content
+
+
+# --- multi-user isolation ---
+
+async def test_user2_cannot_see_user1_queries(authed, authed2, monkeypatch):
+    """Queries created by user1 are invisible to user2."""
+    import app.routes.queries as qroutes
+    monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
+
+    await authed.post("/queries", data={
+        "name": "User1 Private Query",
+        "location": "Rotterdam",
+        "category": "buy",
+        "sort": "newest",
+        "interval_minutes": "60",
+    })
+
+    r = await authed2.get("/")
+    assert r.status_code == 200
+    assert b"User1 Private Query" not in r.content
+
+
+async def test_user2_cannot_edit_user1_query(authed, authed2, monkeypatch):
+    """User2 gets 404 when trying to edit user1's query."""
+    import app.routes.queries as qroutes
+    from app.models import SavedQuery
+
+    monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
+
+    await authed.post("/queries", data={
+        "name": "Exclusive Query",
+        "location": "Leiden",
+        "category": "buy",
+        "sort": "newest",
+        "interval_minutes": "60",
+    })
+    async with AsyncSessionLocal() as db:
+        q = (await db.execute(select(SavedQuery).where(SavedQuery.name == "Exclusive Query"))).scalar_one()
+
+    r = await authed2.get(f"/queries/{q.id}/edit")
+    assert r.status_code == 404
+
+
+async def test_query_has_user_id_set(authed, monkeypatch):
+    """Queries created via the route have user_id matching the logged-in user."""
+    import app.routes.queries as qroutes
+    from app.models import SavedQuery
+
+    monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
+
+    await authed.post("/queries", data={
+        "name": "Ownership Test",
+        "location": "Haarlem",
+        "category": "buy",
+        "sort": "newest",
+        "interval_minutes": "60",
+    })
+    async with AsyncSessionLocal() as db:
+        q = (await db.execute(select(SavedQuery).where(SavedQuery.name == "Ownership Test"))).scalar_one()
+        user = (await db.execute(select(User).where(User.username == _USERNAME))).scalar_one()
+
+    assert q.user_id == user.id
+
+
+# --- admin routes ---
+
+async def test_admin_panel_accessible_to_admin(authed):
+    r = await authed.get("/admin")
+    assert r.status_code == 200
+    assert b"Invite new user" in r.content
+    assert _USERNAME.encode() in r.content
+
+
+async def test_admin_panel_forbidden_to_non_admin(authed2):
+    r = await authed2.get("/admin")
+    assert r.status_code == 403
+
+
+async def test_admin_generate_invite(authed):
+    r = await authed.post("/admin/invite")
+    assert r.status_code == 200
+    assert b"/signup/" in r.content
+
+
+async def test_signup_valid_token(authed):
+    """A valid invite token lets a new user sign up and get logged in."""
+    # Generate token
+    r = await authed.post("/admin/invite")
+    assert r.status_code == 200
+    # Extract token from response
+    content = r.text
+    idx = content.find("/signup/")
+    assert idx != -1
+    token = content[idx + len("/signup/"):].split('"')[0].split("<")[0].strip()
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="https://test",
+        follow_redirects=False,
+    ) as ac:
+        r2 = await ac.get(f"/signup/{token}")
+        assert r2.status_code == 200
+        assert b"Create account" in r2.content
+
+        r3 = await ac.post(f"/signup/{token}", data={
+            "username": "newuser",
+            "password": "newpassword1",
+            "password2": "newpassword1",
+        })
+        assert r3.status_code == 302
+        assert r3.headers["location"] == "/"
+
+
+async def test_signup_invalid_token_rejected(anon):
+    r = await anon.get("/signup/not-a-real-token")
+    assert r.status_code == 400
+
+
+async def test_signup_password_mismatch(authed):
+    r = await authed.post("/admin/invite")
+    content = r.text
+    idx = content.find("/signup/")
+    token = content[idx + len("/signup/"):].split('"')[0].split("<")[0].strip()
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app),
+        base_url="https://test",
+        follow_redirects=False,
+    ) as ac:
+        r2 = await ac.post(f"/signup/{token}", data={
+            "username": "newuser2",
+            "password": "password1",
+            "password2": "different",
+        })
+        assert r2.status_code == 400
+        assert b"do not match" in r2.content

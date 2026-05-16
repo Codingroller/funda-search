@@ -12,11 +12,11 @@ from app.cbs_view import build_view
 from app.db import AsyncSessionLocal
 from app.funda_client import autocomplete as funda_autocomplete
 from app.funda_client import get_listing_detail, search_listings
-from app.models import RunLog, SavedQuery, SeenListing
+from app.models import RunLog, SavedQuery, SeenListing, User
 from app.scheduler import add_query_job, remove_query_job, run_query_job
 from app.templates_env import templates
 
-router = APIRouter(dependencies=[Depends(require_auth)])
+router = APIRouter()
 
 INTERVALS = [
     (15, "15 minutes"),
@@ -77,30 +77,35 @@ def _build_params(
     return params
 
 
+def _owned_or_404(query: SavedQuery | None, user: User) -> SavedQuery:
+    if not query or query.user_id != user.id:
+        raise HTTPException(404)
+    return query
+
+
 @router.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request):
+async def dashboard(request: Request, current_user: User = Depends(require_auth)):
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(SavedQuery).order_by(SavedQuery.created_at.desc())
+            select(SavedQuery)
+            .where(SavedQuery.user_id == current_user.id)
+            .order_by(SavedQuery.created_at.desc())
         )
         queries = result.scalars().all()
     return templates.TemplateResponse(
-        request, "dashboard.html", {"queries": queries, "intervals": INTERVALS}
+        request, "dashboard.html",
+        {"queries": queries, "intervals": INTERVALS, "current_user": current_user},
     )
 
 
 @router.get("/queries/new", response_class=HTMLResponse)
-async def query_new(request: Request):
+async def query_new(request: Request, current_user: User = Depends(require_auth)):
     return templates.TemplateResponse(
-        request,
-        "query_form.html",
+        request, "query_form.html",
         {
-            "query": None,
-            "params": {},
-            "intervals": INTERVALS,
-            "object_types": OBJECT_TYPES,
-            "energy_labels": ENERGY_LABELS,
-            "radius_options": RADIUS_OPTIONS,
+            "query": None, "params": {}, "intervals": INTERVALS,
+            "object_types": OBJECT_TYPES, "energy_labels": ENERGY_LABELS,
+            "radius_options": RADIUS_OPTIONS, "current_user": current_user,
         },
     )
 
@@ -108,6 +113,7 @@ async def query_new(request: Request):
 @router.post("/queries", response_class=HTMLResponse)
 async def query_create(
     request: Request,
+    current_user: User = Depends(require_auth),
     name: str = Form(...),
     location: str = Form(...),
     category: str = Form("buy"),
@@ -134,6 +140,7 @@ async def query_create(
 
     async with AsyncSessionLocal() as db:
         query = SavedQuery(
+            user_id=current_user.id,
             name=name,
             params_json=json.dumps(params),
             interval_minutes=interval_minutes,
@@ -150,22 +157,16 @@ async def query_create(
 
 
 @router.get("/queries/{query_id}/edit", response_class=HTMLResponse)
-async def query_edit(request: Request, query_id: int):
+async def query_edit(request: Request, query_id: int, current_user: User = Depends(require_auth)):
     async with AsyncSessionLocal() as db:
-        query = await db.get(SavedQuery, query_id)
-    if not query:
-        raise HTTPException(404)
+        query = _owned_or_404(await db.get(SavedQuery, query_id), current_user)
     params = json.loads(query.params_json)
     return templates.TemplateResponse(
-        request,
-        "query_form.html",
+        request, "query_form.html",
         {
-            "query": query,
-            "params": params,
-            "intervals": INTERVALS,
-            "object_types": OBJECT_TYPES,
-            "energy_labels": ENERGY_LABELS,
-            "radius_options": RADIUS_OPTIONS,
+            "query": query, "params": params, "intervals": INTERVALS,
+            "object_types": OBJECT_TYPES, "energy_labels": ENERGY_LABELS,
+            "radius_options": RADIUS_OPTIONS, "current_user": current_user,
         },
     )
 
@@ -174,6 +175,7 @@ async def query_edit(request: Request, query_id: int):
 async def query_update(
     request: Request,
     query_id: int,
+    current_user: User = Depends(require_auth),
     name: str = Form(...),
     location: str = Form(...),
     category: str = Form("buy"),
@@ -199,9 +201,7 @@ async def query_update(
     )
 
     async with AsyncSessionLocal() as db:
-        query = await db.get(SavedQuery, query_id)
-        if not query:
-            raise HTTPException(404)
+        query = _owned_or_404(await db.get(SavedQuery, query_id), current_user)
         query.name = name
         query.params_json = json.dumps(params)
         query.interval_minutes = interval_minutes
@@ -217,11 +217,9 @@ async def query_update(
 
 
 @router.delete("/queries/{query_id}", response_class=HTMLResponse)
-async def query_delete(query_id: int):
+async def query_delete(query_id: int, current_user: User = Depends(require_auth)):
     async with AsyncSessionLocal() as db:
-        query = await db.get(SavedQuery, query_id)
-        if not query:
-            raise HTTPException(404)
+        query = _owned_or_404(await db.get(SavedQuery, query_id), current_user)
         await db.delete(query)
         await db.commit()
     remove_query_job(query_id)
@@ -229,11 +227,9 @@ async def query_delete(query_id: int):
 
 
 @router.post("/queries/{query_id}/toggle", response_class=HTMLResponse)
-async def query_toggle(request: Request, query_id: int):
+async def query_toggle(request: Request, query_id: int, current_user: User = Depends(require_auth)):
     async with AsyncSessionLocal() as db:
-        query = await db.get(SavedQuery, query_id)
-        if not query:
-            raise HTTPException(404)
+        query = _owned_or_404(await db.get(SavedQuery, query_id), current_user)
         query.enabled = not query.enabled
         await db.commit()
 
@@ -243,22 +239,23 @@ async def query_toggle(request: Request, query_id: int):
         remove_query_job(query_id)
 
     return templates.TemplateResponse(
-        request, "partials/query_row.html", {"query": query, "intervals": INTERVALS}
+        request, "partials/query_row.html",
+        {"query": query, "intervals": INTERVALS, "current_user": current_user},
     )
 
 
 @router.post("/queries/{query_id}/run", response_class=HTMLResponse)
-async def query_run(query_id: int):
+async def query_run(query_id: int, current_user: User = Depends(require_auth)):
+    async with AsyncSessionLocal() as db:
+        _owned_or_404(await db.get(SavedQuery, query_id), current_user)
     await run_query_job(query_id)
     return HTMLResponse("", headers={"HX-Refresh": "true"})
 
 
 @router.get("/queries/{query_id}", response_class=HTMLResponse)
-async def query_detail(request: Request, query_id: int):
+async def query_detail(request: Request, query_id: int, current_user: User = Depends(require_auth)):
     async with AsyncSessionLocal() as db:
-        query = await db.get(SavedQuery, query_id)
-        if not query:
-            raise HTTPException(404)
+        query = _owned_or_404(await db.get(SavedQuery, query_id), current_user)
         result = await db.execute(
             select(RunLog)
             .where(RunLog.query_id == query_id)
@@ -267,22 +264,27 @@ async def query_detail(request: Request, query_id: int):
         )
         runs = result.scalars().all()
     return templates.TemplateResponse(
-        request, "query_detail.html", {"query": query, "runs": runs}
+        request, "query_detail.html",
+        {"query": query, "runs": runs, "current_user": current_user},
     )
 
 
 @router.get("/autocomplete", response_class=HTMLResponse)
-async def autocomplete_endpoint(request: Request, q: str = ""):
+async def autocomplete_endpoint(
+    request: Request, q: str = "", current_user: User = Depends(require_auth)
+):
     if len(q) < 2:
         return HTMLResponse("")
     suggestions = await funda_autocomplete(q)
     return templates.TemplateResponse(
-        request, "partials/autocomplete.html", {"suggestions": suggestions}
+        request, "partials/autocomplete.html", {"suggestions": suggestions},
     )
 
 
 @router.get("/listings/{global_id}", response_class=HTMLResponse)
-async def listing_detail_page(request: Request, global_id: str):
+async def listing_detail_page(
+    request: Request, global_id: str, current_user: User = Depends(require_auth)
+):
     try:
         listing = await get_listing_detail(global_id)
     except (LookupError, Exception) as exc:
@@ -292,7 +294,6 @@ async def listing_detail_page(request: Request, global_id: str):
 
     cbs = None
     identifier = listing.get("neighbourhood_identifier")
-    # pyfunda returns a URL slug, not a CBS buurtcode — geocode from lat/lon when needed
     if (not identifier or not str(identifier).upper().startswith("BU")) and listing.get("lat") and listing.get("lon"):
         identifier = await get_buurtcode_from_coords(listing["lat"], listing["lon"])
     if identifier:
@@ -302,5 +303,5 @@ async def listing_detail_page(request: Request, global_id: str):
     back_url = request.headers.get("referer") or "/"
     return templates.TemplateResponse(
         request, "listing_detail.html",
-        {"listing": listing, "cbs": cbs, "view": view, "back_url": back_url},
+        {"listing": listing, "cbs": cbs, "view": view, "back_url": back_url, "current_user": current_user},
     )

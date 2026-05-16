@@ -6,6 +6,7 @@ class Settings(BaseSettings):
 
     secret_key: str  # required — no default; startup raises ValidationError if unset
     admin_password: str = ""
+    admin_username: str = "admin"
     ntfy_base_url: str = "https://ntfy.rominiek.nl"
     ntfy_token: str = ""
     db_path: str = "/data/funda.db"

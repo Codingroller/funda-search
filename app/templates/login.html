@@ -14,8 +14,12 @@
     {% endif %}
     <form method="post" action="/login">
       <div class="field">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" autofocus required autocomplete="username">
+      </div>
+      <div class="field">
         <label for="password">Password</label>
-        <input type="password" id="password" name="password" autofocus required>
+        <input type="password" id="password" name="password" required autocomplete="current-password">
       </div>
       <button type="submit" class="btn btn-primary btn-full">Login</button>
     </form>

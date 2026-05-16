@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Admin — Funda Search{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Admin panel</h1>
+</div>
+
+{# ── Invite link ── #}
+<div class="card" style="margin-bottom:24px">
+  <h2>Invite new user</h2>
+  <p class="text-muted" style="font-size:14px;margin-bottom:16px">
+    Generate a single-use link (valid 7 days). Share it directly — anyone with the link can create an account.
+  </p>
+  <form method="post" action="/admin/invite">
+    <button type="submit" class="btn btn-primary">Generate invite link</button>
+  </form>
+  {% if invite_url %}
+  <div style="margin-top:16px">
+    <div class="alert alert-ok">Invite link generated — share this once:</div>
+    <code class="topic-code" style="margin-top:8px;display:block;word-break:break-all">{{ invite_url }}</code>
+  </div>
+  {% endif %}
+
+  {% if invite_tokens %}
+  <div style="margin-top:16px">
+    <p class="text-muted small">Active unused invites (expire in 7 days):</p>
+    {% for t in invite_tokens %}
+    <div class="topic-code small" style="margin-top:6px">/signup/{{ t.token[:16] }}… — created {{ t.created_at.strftime('%d %b %H:%M') }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+{# ── User list ── #}
+<div class="card">
+  <h2>Users</h2>
+  <div class="table-wrap" style="margin-top:12px">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Queries</th>
+          <th>Joined</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in users %}
+        {% set u = row.user %}
+        <tr>
+          <td>
+            {{ u.username }}
+            {% if u.id == current_user.id %}<span class="badge badge-none" style="margin-left:6px">you</span>{% endif %}
+          </td>
+          <td>
+            {% if u.is_admin %}<span class="badge badge-ok">Admin</span>{% else %}<span class="badge badge-none">User</span>{% endif %}
+          </td>
+          <td>{{ row.query_count }}</td>
+          <td>{{ u.created_at.strftime('%d %b %Y') }}</td>
+          <td class="actions">
+            {% if u.id != current_user.id %}
+            <form method="post" action="/admin/users/{{ u.id }}/toggle-admin" style="display:inline">
+              <button type="submit" class="btn btn-sm">
+                {% if u.is_admin %}Demote{% else %}Make admin{% endif %}
+              </button>
+            </form>
+            <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline"
+                  onsubmit="return confirm('Delete {{ u.username }} and all their data?')">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

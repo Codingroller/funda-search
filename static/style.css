@@ -38,9 +38,10 @@ a:hover { text-decoration: underline; }
   height: 52px;
 }
 .nav-brand { font-weight: 700; font-size: 17px; color: var(--text); }
-.nav-links { display: flex; gap: 20px; font-size: 14px; }
+.nav-links { display: flex; gap: 20px; font-size: 14px; align-items: center; }
 .nav-links a { color: var(--text-muted); }
 .nav-links a:hover { color: var(--text); text-decoration: none; }
+.nav-username { font-size: 13px; color: var(--text-muted); font-weight: 500; }
 
 /* Container */
 .container { max-width: 960px; margin: 0 auto; padding: 28px 16px 60px; }

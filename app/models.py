@@ -7,15 +7,29 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
     ntfy_topic = Column(String, nullable=False)
+    is_admin = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class InviteToken(Base):
+    __tablename__ = "invite_tokens"
+
+    token = Column(String, primary_key=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    used_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
 
 class SavedQuery(Base):
     __tablename__ = "saved_queries"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     params_json = Column(Text, nullable=False)
     interval_minutes = Column(Integer, default=60)
