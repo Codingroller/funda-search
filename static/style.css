@@ -380,7 +380,7 @@ a:hover { text-decoration: underline; }
   gap: 4px 10px; align-items: baseline; padding: 4px 0;
   border-bottom: 1px solid #f3f4f6; font-size: 13px;
 }
-.nb-row-header { font-size: 11px; color: var(--text-muted); font-weight: 600; padding-bottom: 6px; border-bottom: 2px solid var(--border); }
+.nb-row-header { font-size: 11px; color: var(--text-muted); font-weight: 600; padding-bottom: 6px; border-bottom: 2px solid var(--border); grid-template-columns: 0 1fr 1fr 0; }
 .nb-row-sub { border-bottom: none; padding-top: 0; }
 .nb-label { color: var(--text-muted); }
 .nb-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
