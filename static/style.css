@@ -261,7 +261,7 @@ a:hover { text-decoration: underline; }
   color: #065f46;
 }
 
-/* Collapsible Funda listing details */
+/* Collapsible description */
 .funda-details {
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -271,24 +271,18 @@ a:hover { text-decoration: underline; }
 .funda-details-summary {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 8px;
+  padding: 12px 16px;
   cursor: pointer;
   list-style: none;
   user-select: none;
 }
 .funda-details-summary::-webkit-details-marker { display: none; }
-.funda-details-title { font-weight: 700; font-size: 15px; }
-.funda-details-sub { font-size: 13px; color: var(--text-muted); flex: 1; }
-.funda-details-chevron { color: var(--text-muted); font-size: 13px; transition: transform .2s; }
+.funda-details-title { font-weight: 600; font-size: 14px; flex: 1; }
+.funda-details-chevron { color: var(--text-muted); font-size: 12px; transition: transform .2s; }
 .funda-details[open] .funda-details-chevron { transform: rotate(90deg); }
 .funda-details[open] .funda-details-summary { border-bottom: 1px solid var(--border); }
-.funda-details > :not(summary) { padding: 0 16px; }
-.funda-details > .detail-hero { padding: 0; margin: 0; border-radius: 0; border: none; }
-.funda-details > .detail-gallery { padding: 12px 16px; }
-.funda-details > .detail-meta-row { padding: 14px 16px 0; }
-.funda-details > .detail-section { padding: 0 16px 16px; }
-.funda-details > div:last-child { padding-bottom: 14px; }
+.funda-details .detail-description { padding: 14px 16px; }
 
 /* Listing detail page */
 .detail-hero {
@@ -324,21 +318,27 @@ a:hover { text-decoration: underline; }
   font-size: 13px;
   color: var(--text);
 }
-.detail-gallery {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
+.detail-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
   margin-bottom: 20px;
-  padding-bottom: 4px;
 }
-.detail-thumb {
-  width: 160px;
-  height: 120px;
-  object-fit: cover;
+.detail-photo-cell {
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
   border-radius: var(--radius);
   border: 1px solid var(--border);
-  flex-shrink: 0;
 }
+.detail-photo-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .2s;
+}
+.detail-photo-cell:hover img { transform: scale(1.03); }
 .detail-section { margin-bottom: 24px; }
 .detail-section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
 .detail-description p { font-size: 14px; line-height: 1.7; margin-bottom: 8px; color: var(--text); }
