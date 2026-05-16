@@ -37,7 +37,7 @@ async def _run_migrations(conn) -> None:
     await conn.execute(text(
         "UPDATE saved_queries SET user_id = (SELECT id FROM users LIMIT 1) WHERE user_id IS NULL"
     ))
-    await conn.commit()
+    # No explicit commit — engine.begin() context manager commits on exit
 
 
 @asynccontextmanager
