@@ -83,16 +83,16 @@ async def dashboard(request: Request):
         )
         queries = result.scalars().all()
     return templates.TemplateResponse(
-        "dashboard.html", {"request": request, "queries": queries, "intervals": INTERVALS}
+        request, "dashboard.html", {"queries": queries, "intervals": INTERVALS}
     )
 
 
 @router.get("/queries/new", response_class=HTMLResponse)
 async def query_new(request: Request):
     return templates.TemplateResponse(
+        request,
         "query_form.html",
         {
-            "request": request,
             "query": None,
             "params": {},
             "intervals": INTERVALS,
@@ -164,9 +164,9 @@ async def query_edit(request: Request, query_id: int):
         raise HTTPException(404)
     params = json.loads(query.params_json)
     return templates.TemplateResponse(
+        request,
         "query_form.html",
         {
-            "request": request,
             "query": query,
             "params": params,
             "intervals": INTERVALS,
@@ -250,8 +250,7 @@ async def query_toggle(request: Request, query_id: int):
         remove_query_job(query_id)
 
     return templates.TemplateResponse(
-        "partials/query_row.html",
-        {"request": request, "query": query, "intervals": INTERVALS},
+        request, "partials/query_row.html", {"query": query, "intervals": INTERVALS}
     )
 
 
@@ -267,7 +266,7 @@ async def query_run(request: Request, query_id: int):
         )
         last_run = result.scalar_one_or_none()
     return templates.TemplateResponse(
-        "partials/run_result.html", {"request": request, "run": last_run}
+        request, "partials/run_result.html", {"run": last_run}
     )
 
 
@@ -285,8 +284,7 @@ async def query_detail(request: Request, query_id: int):
         )
         runs = result.scalars().all()
     return templates.TemplateResponse(
-        "query_detail.html",
-        {"request": request, "query": query, "runs": runs},
+        request, "query_detail.html", {"query": query, "runs": runs}
     )
 
 
@@ -296,6 +294,5 @@ async def autocomplete_endpoint(request: Request, q: str = ""):
         return HTMLResponse("")
     suggestions = await funda_autocomplete(q)
     return templates.TemplateResponse(
-        "partials/autocomplete.html",
-        {"request": request, "suggestions": suggestions},
+        request, "partials/autocomplete.html", {"suggestions": suggestions}
     )

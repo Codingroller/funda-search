@@ -14,7 +14,7 @@ router = APIRouter()
 async def login_get(request: Request):
     if request.session.get("authenticated"):
         return RedirectResponse("/", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
 @router.post("/login")
@@ -28,9 +28,7 @@ async def login_post(request: Request, password: str = Form(...)):
         return RedirectResponse("/", status_code=302)
 
     return templates.TemplateResponse(
-        "login.html",
-        {"request": request, "error": "Incorrect password"},
-        status_code=401,
+        request, "login.html", {"error": "Incorrect password"}, status_code=401
     )
 
 
