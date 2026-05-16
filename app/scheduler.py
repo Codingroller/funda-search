@@ -33,6 +33,14 @@ async def run_query_job(query_id: int) -> None:
 
             new_listings = [l for l in listings if l["global_id"] not in seen_ids]
 
+            # Download and cache photos locally before storing
+            from app.image_cache import cache_photo
+            for listing in new_listings:
+                if listing.get("photo_url"):
+                    cached = await cache_photo(listing["photo_url"])
+                    if cached:
+                        listing["photo_url"] = cached
+
             for listing in new_listings:
                 db.add(SeenListing(query_id=query_id, global_id=listing["global_id"]))
 

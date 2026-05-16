@@ -1,8 +1,10 @@
 import secrets
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
-from fastapi.responses import RedirectResponse
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from starlette.middleware.sessions import SessionMiddleware
@@ -60,6 +62,16 @@ async def unauth_handler(request: Request, _exc: UnauthenticatedException):
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+
+
+@app.get("/img/{filename}")
+async def serve_image(filename: str):
+    if "/" in filename or "\\" in filename or filename.startswith("."):
+        raise HTTPException(400)
+    path = Path(settings.db_path).parent / "images" / filename
+    if not path.exists():
+        raise HTTPException(404)
+    return FileResponse(str(path), media_type="image/jpeg")
 
 
 # Routers

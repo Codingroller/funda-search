@@ -23,10 +23,8 @@
     <button
       class="btn btn-primary"
       hx-post="/queries/{{ query.id }}/run"
-      hx-target="#inline-run-result"
-      hx-swap="innerHTML"
+      hx-disabled-elt="this"
     >Run now</button>
-    <span id="inline-run-result"></span>
   </div>
 </div>
 

@@ -255,19 +255,9 @@ async def query_toggle(request: Request, query_id: int):
 
 
 @router.post("/queries/{query_id}/run", response_class=HTMLResponse)
-async def query_run(request: Request, query_id: int):
+async def query_run(query_id: int):
     await run_query_job(query_id)
-    async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(RunLog)
-            .where(RunLog.query_id == query_id)
-            .order_by(RunLog.started_at.desc())
-            .limit(1)
-        )
-        last_run = result.scalar_one_or_none()
-    return templates.TemplateResponse(
-        request, "partials/run_result.html", {"run": last_run}
-    )
+    return HTMLResponse("", headers={"HX-Refresh": "true"})
 
 
 @router.get("/queries/{query_id}", response_class=HTMLResponse)
