@@ -14,8 +14,17 @@ from app.models import User
 from app.scheduler import scheduler, reconcile_jobs
 
 
+_WEAK_KEYS = {"change-me", "secret", "changeme", "password", "test", ""}
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if settings.secret_key in _WEAK_KEYS or len(settings.secret_key) < 32:
+        raise RuntimeError(
+            "SECRET_KEY is not set to a secure value. "
+            "Generate one with: python3 -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -40,7 +49,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Funda Search", lifespan=lifespan)
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, https_only=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.exception_handler(UnauthenticatedException)

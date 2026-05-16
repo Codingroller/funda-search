@@ -35,7 +35,7 @@ async def anon():
     """Unauthenticated ASGI client."""
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
+        base_url="https://test",
         follow_redirects=False,
     ) as ac:
         yield ac
@@ -46,7 +46,7 @@ async def authed():
     """Client with a valid session cookie."""
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app),
-        base_url="http://test",
+        base_url="https://test",
         follow_redirects=False,
     ) as ac:
         r = await ac.post("/login", data={"password": _PASSWORD})
