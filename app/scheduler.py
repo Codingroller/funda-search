@@ -51,7 +51,7 @@ async def run_query_job(query_id: int) -> None:
                 from app.notifier import send_ntfy
 
                 for listing in new_listings:
-                    title = " — ".join(
+                    title = " - ".join(
                         filter(
                             None,
                             [query.name, listing.get("price"), listing.get("city")],
