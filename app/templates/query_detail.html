@@ -73,9 +73,6 @@
         {% if listings %}
         <tr class="listings-row">
           <td colspan="6">
-            {% if run.new_count == 0 %}
-            <p class="text-muted small" style="margin-bottom:8px">No new listings — showing all {{ listings|length }} matched results</p>
-            {% endif %}
             <div class="listings-grid">
               {% for listing in listings %}
                 {% include "partials/listing_card.html" %}
