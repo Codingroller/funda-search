@@ -342,9 +342,7 @@ a:hover { text-decoration: underline; }
 .detail-section { margin-bottom: 24px; }
 .detail-section-title { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
 .detail-description p { font-size: 14px; line-height: 1.7; margin-bottom: 8px; color: var(--text); }
-@media (max-width: 600px) {
-  .detail-hero-img { height: 220px; }
-}
+/* placeholder — consolidated below */
 
 /* ── Neighbourhood stats redesign ──────────────────────────────────── */
 .nb-glance {
@@ -464,10 +462,7 @@ a:hover { text-decoration: underline; }
 .nb-sparse-row { display: grid; grid-template-columns: 1fr 90px 90px; gap: 4px 10px; font-size: 13px; padding: 3px 0; border-bottom: 1px solid #f3f4f6; }
 .nb-sparse-label { color: var(--text-muted); }
 .nb-sparse-val { text-align: right; font-variant-numeric: tabular-nums; }
-@media (max-width: 640px) {
-  .nb-row { grid-template-columns: 1fr 70px 70px 40px; font-size: 12px; }
-  .nb-glance { grid-template-columns: repeat(3, 1fr); }
-}
+/* placeholder — consolidated below */
 
 /* Settings */
 .settings-grid { display: grid; gap: 20px; }
@@ -508,8 +503,109 @@ a:hover { text-decoration: underline; }
 .text-muted { color: var(--text-muted); }
 .small { font-size: 12px; }
 
-@media (max-width: 600px) {
-  .field-row { grid-template-columns: 1fr; }
-  .listings-grid { grid-template-columns: 1fr 1fr; }
+/* ── Mobile (≤ 640 px) ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Nav */
+  .nav { flex-wrap: wrap; height: auto; padding: 10px 14px; gap: 4px; }
+  .nav-links { gap: 14px; }
+
+  /* Container */
+  .container { padding: 16px 12px 48px; }
+
+  /* Page header */
   .page-header { flex-direction: column; align-items: flex-start; }
+
+  /* Buttons — bigger tap targets */
+  .btn { min-height: 40px; }
+  .btn-sm { min-height: 34px; padding: 6px 10px; }
+  .toggle-btn { min-height: 34px; padding: 5px 12px; }
+
+  /* Forms */
+  .field-row { grid-template-columns: 1fr; }
+
+  /* ── Dashboard / query table → card stack on mobile ── */
+  .table-queries thead { display: none; }
+  .table-queries tbody tr {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #fff;
+    margin-bottom: 8px;
+    padding: 4px 14px;
+  }
+  .table-queries td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f3f4f6;
+    padding: 9px 0;
+    font-size: 13px;
+    gap: 8px;
+  }
+  .table-queries td:last-child { border-bottom: none; }
+  .table-queries td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .table-queries td.actions { flex-wrap: wrap; justify-content: flex-end; }
+  .table-queries td.actions::before { margin-right: auto; }
+  .table-wrap:has(.table-queries) { border: none; background: transparent; overflow-x: visible; }
+
+  /* ── Runs table: hide Duration + Error on mobile ── */
+  .table-runs th:nth-child(2),
+  .table-runs td:nth-child(2),
+  .table-runs th:nth-child(6),
+  .table-runs td:nth-child(6) { display: none; }
+
+  /* ── Listing cards: single column, photo on top ── */
+  .listings-grid { grid-template-columns: 1fr; }
+  .listing-card { flex-direction: column; padding: 0; gap: 0; overflow: hidden; }
+  .listing-photo-link { order: -1; align-self: auto; }
+  .listing-photo { width: 100%; height: 160px; border-radius: 0; }
+  .listing-info { padding: 10px; }
+  .listing-details-link { padding-top: 4px; }
+
+  /* ── Detail page ── */
+  .detail-hero-img { height: 200px; }
+  .detail-meta-row { gap: 10px; }
+  .detail-tags { gap: 5px; }
+  .detail-photo-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 4px; }
+  .detail-thumb { height: 100px; }
+
+  /* ── Neighbourhood: chips scroll horizontally ── */
+  .nb-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+    margin-bottom: 12px;
+  }
+  .nb-chips::-webkit-scrollbar { display: none; }
+  .nb-chip { flex-shrink: 0; }
+
+  /* ── Neighbourhood: tighter data grid ── */
+  .nb-glance { grid-template-columns: repeat(3, 1fr); }
+  .nb-glance-val { font-size: 15px; }
+  .nb-glance-kpi { padding: 9px 10px; }
+  .nb-row { grid-template-columns: 1fr 68px 68px 36px; font-size: 12px; }
+  .nb-colheader { grid-template-columns: 1fr 68px 68px 36px; }
+  .nb-colheader-b, .nb-colheader-w { font-size: 10px; }
+  .nb-sparse-row { grid-template-columns: 1fr 80px 80px; }
+  .nb-legend { gap: 3px 10px; font-size: 10px; }
+  .nb-bar-group { padding: 6px 0 3px; }
+}
+
+/* ── Very small phones (≤ 400 px) ── */
+@media (max-width: 400px) {
+  /* Drop the delta column entirely — not enough room */
+  .nb-row { grid-template-columns: 1fr 65px 65px; }
+  .nb-row .nb-delta-cell { display: none; }
+  .nb-colheader { grid-template-columns: 1fr 65px 65px; }
+  /* Glance: 2 per row */
+  .nb-glance { grid-template-columns: repeat(2, 1fr); }
 }
