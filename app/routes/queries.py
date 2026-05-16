@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.auth import require_auth
 from app.cbs_client import get_buurtcode_from_coords, get_neighbourhood_stats
+from app.cbs_view import build_view
 from app.db import AsyncSessionLocal
 from app.funda_client import autocomplete as funda_autocomplete
 from app.funda_client import get_listing_detail, search_listings
@@ -297,8 +298,9 @@ async def listing_detail_page(request: Request, global_id: str):
     if identifier:
         cbs = await get_neighbourhood_stats(identifier)
 
+    view = build_view(cbs) if cbs else None
     back_url = request.headers.get("referer") or "/"
     return templates.TemplateResponse(
         request, "listing_detail.html",
-        {"listing": listing, "cbs": cbs, "back_url": back_url},
+        {"listing": listing, "cbs": cbs, "view": view, "back_url": back_url},
     )

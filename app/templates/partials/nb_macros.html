@@ -1,0 +1,41 @@
+{% macro nb_col_header(buurt_name, wijk_name) %}
+<div class="nb-row nb-row-header">
+  <span></span>
+  <span style="text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ buurt_name }}">{{ buurt_name }}</span>
+  <span style="text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ wijk_name }}">{{ wijk_name }}</span>
+  <span></span>
+</div>
+{% endmacro %}
+
+{% macro nb_row(label, b, w, delta=None) %}
+{% if b is not none or w is not none %}
+<div class="nb-row">
+  <span class="nb-label">{{ label }}</span>
+  <span class="nb-val">{{ b if b is not none else '—' }}</span>
+  <span class="nb-val">{{ w if w is not none else '—' }}</span>
+  <span class="nb-delta-cell {{ 'nb-d-pos' if delta and delta.startswith('+') else ('nb-d-neg' if delta and delta.startswith('-') else '') }}">{{ delta or '' }}</span>
+</div>
+{% endif %}
+{% endmacro %}
+
+{% macro nb_bar(label, segs) %}
+{% if segs %}
+<div class="nb-bar-group">
+  <div class="nb-bar-label">{{ label }}</div>
+  <div class="nb-stack" role="img" aria-label="{{ segs|map(attribute='label')|join(', ') }}">
+    {% for s in segs %}
+    <span class="{{ s.color }}" style="width:{{ s.pct_b }}%;flex-shrink:0" title="{{ s.label }}: {{ s.pct_b }}%"></span>
+    {% endfor %}
+  </div>
+  <div class="nb-legend">
+    {% for s in segs %}
+    <span class="nb-legend-item">
+      <span class="nb-legend-swatch {{ s.color }}"></span>
+      {{ s.label }} {{ s.pct_b }}%
+      {% if s.pct_w is not none %}<span class="nb-legend-wijk">(wijk {{ s.pct_w }}%)</span>{% endif %}
+    </span>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endmacro %}

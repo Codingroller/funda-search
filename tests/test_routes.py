@@ -229,7 +229,8 @@ async def test_listing_detail_with_cbs(authed, monkeypatch):
     assert r.status_code == 200
     assert b"Garenkokerskwartier" in r.content
     assert b"Zijlwegkwartier" in r.content
-    assert b"1985" in r.content
+    # With the new view-model, residents are formatted with Dutch thousands separator
+    assert b"1.985" in r.content
 
 
 async def test_listing_detail_not_found(authed, monkeypatch):
