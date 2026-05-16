@@ -68,11 +68,14 @@
         <td>{{ run.new_count }}</td>
         <td class="text-muted small">{{ run.error_message or '' }}</td>
       </tr>
-      {% if run.new_count > 0 and run.new_listings_json %}
+      {% if run.new_listings_json %}
         {% set listings = run.new_listings_json | fromjson %}
         {% if listings %}
         <tr class="listings-row">
           <td colspan="6">
+            {% if run.new_count == 0 %}
+            <p class="text-muted small" style="margin-bottom:8px">No new listings — showing all {{ listings|length }} matched results</p>
+            {% endif %}
             <div class="listings-grid">
               {% for listing in listings %}
                 {% include "partials/listing_card.html" %}
