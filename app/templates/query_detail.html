@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}{{ query.name }} — Funda Search{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ query.name }}</h1>
+    <p class="text-muted">
+      Checks every
+      {% for minutes, label in [
+          (15,'15 minutes'),(30,'30 minutes'),(60,'1 hour'),
+          (180,'3 hours'),(360,'6 hours'),(720,'12 hours'),(1440,'24 hours')
+      ] %}
+        {% if minutes == query.interval_minutes %}{{ label }}{% endif %}
+      {% endfor %}
+      &mdash;
+      <span class="badge {% if query.enabled %}badge-ok{% else %}badge-none{% endif %}">
+        {% if query.enabled %}Enabled{% else %}Disabled{% endif %}
+      </span>
+    </p>
+  </div>
+  <div class="header-actions">
+    <a href="/queries/{{ query.id }}/edit" class="btn">Edit</a>
+    <button
+      class="btn btn-primary"
+      hx-post="/queries/{{ query.id }}/run"
+      hx-target="#inline-run-result"
+      hx-swap="innerHTML"
+    >Run now</button>
+    <span id="inline-run-result"></span>
+  </div>
+</div>
+
+<h2>Recent runs</h2>
+{% if runs %}
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Started</th>
+        <th>Duration</th>
+        <th>Status</th>
+        <th>Results</th>
+        <th>New</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>{{ run.started_at.strftime('%d %b %H:%M:%S') }}</td>
+        <td>
+          {% if run.finished_at %}
+            {{ ((run.finished_at - run.started_at).total_seconds() | round(1)) }}s
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          {% if run.status == 'ok' %}
+            <span class="badge badge-ok">OK</span>
+          {% else %}
+            <span class="badge badge-error">Error</span>
+          {% endif %}
+        </td>
+        <td>{{ run.result_count }}</td>
+        <td>{{ run.new_count }}</td>
+        <td class="text-muted small">{{ run.error_message or '' }}</td>
+      </tr>
+      {% if run.new_count > 0 and run.new_listings_json %}
+        {% set listings = run.new_listings_json | fromjson %}
+        {% if listings %}
+        <tr class="listings-row">
+          <td colspan="6">
+            <div class="listings-grid">
+              {% for listing in listings %}
+                {% include "partials/listing_card.html" %}
+              {% endfor %}
+            </div>
+          </td>
+        </tr>
+        {% endif %}
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">No runs yet. Hit "Run now" to test this query.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Settings — Funda Search{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Settings</h1>
+</div>
+
+{% if message %}
+  <div class="alert alert-ok">{{ message }}</div>
+{% endif %}
+{% if error %}
+  <div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="settings-grid">
+  <section class="card">
+    <h2>Push Notifications</h2>
+    {% if user %}
+      <p>Your ntfy topic:</p>
+      <code class="topic-code">{{ user.ntfy_topic }}</code>
+
+      <p class="mt">
+        Subscribe in the ntfy app:<br>
+        <a href="{{ ntfy_base_url }}/{{ user.ntfy_topic }}" target="_blank">
+          {{ ntfy_base_url }}/{{ user.ntfy_topic }}
+        </a>
+      </p>
+
+      <div class="btn-row mt">
+        <form method="post" action="/settings/test-notification">
+          <button type="submit" class="btn btn-primary">Send test notification</button>
+        </form>
+        <form method="post" action="/settings/ntfy-topic"
+              onsubmit="return confirm('Regenerate topic? You will need to re-subscribe in the ntfy app.')">
+          <button type="submit" class="btn btn-danger">Regenerate topic</button>
+        </form>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Change Password</h2>
+    <form method="post" action="/settings/password" class="form-inline">
+      <div class="field">
+        <label for="current_password">Current password</label>
+        <input type="password" id="current_password" name="current_password" required>
+      </div>
+      <div class="field">
+        <label for="new_password">New password</label>
+        <input type="password" id="new_password" name="new_password" required minlength="8">
+      </div>
+      <div class="field">
+        <label for="confirm_password">Confirm new password</label>
+        <input type="password" id="confirm_password" name="confirm_password" required minlength="8">
+      </div>
+      <button type="submit" class="btn btn-primary">Update password</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

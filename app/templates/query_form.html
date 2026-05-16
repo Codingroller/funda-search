@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}{% if query %}Edit{% else %}New{% endif %} Query — Funda Search{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>{% if query %}Edit "{{ query.name }}"{% else %}New Query{% endif %}</h1>
+</div>
+
+<form
+  method="post"
+  action="{% if query %}/queries/{{ query.id }}{% else %}/queries{% endif %}"
+  class="form-card"
+>
+  <div class="form-section">
+    <h2>Basic</h2>
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" required
+             value="{{ query.name if query else '' }}"
+             placeholder="e.g. Amsterdam family home">
+    </div>
+
+    <div class="field">
+      <label for="location">Location(s) <span class="hint">comma-separated cities or postcodes</span></label>
+      <div class="autocomplete-wrap">
+        <input
+          type="text" id="location" name="location" required
+          value="{{ params.get('location', []) | join(', ') }}"
+          placeholder="e.g. amsterdam, utrecht"
+          autocomplete="off"
+          hx-get="/autocomplete"
+          hx-trigger="keyup changed delay:350ms"
+          hx-target="#autocomplete-results"
+          hx-vals='{"q": ""}'
+          hx-include="[name='location']"
+        >
+        <div id="autocomplete-results" class="autocomplete-dropdown"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Category</label>
+      <div class="radio-group">
+        {% for val, label in [('buy', 'Buy'), ('rent', 'Rent'), ('sold', 'Sold')] %}
+          <label class="radio-label">
+            <input type="radio" name="category" value="{{ val }}"
+                   {% if params.get('category', 'buy') == val %}checked{% endif %}>
+            {{ label }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h2>Filters</h2>
+    <div class="field-row">
+      <div class="field">
+        <label for="min_price">Min price (€)</label>
+        <input type="number" id="min_price" name="min_price" min="0" step="1000"
+               value="{{ params.get('min_price', '') }}">
+      </div>
+      <div class="field">
+        <label for="max_price">Max price (€)</label>
+        <input type="number" id="max_price" name="max_price" min="0" step="1000"
+               value="{{ params.get('max_price', '') }}">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="min_area">Min area (m²)</label>
+        <input type="number" id="min_area" name="min_area" min="0"
+               value="{{ params.get('min_area', '') }}">
+      </div>
+      <div class="field">
+        <label for="max_area">Max area (m²)</label>
+        <input type="number" id="max_area" name="max_area" min="0"
+               value="{{ params.get('max_area', '') }}">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="min_rooms">Min rooms</label>
+        <input type="number" id="min_rooms" name="min_rooms" min="1" max="20"
+               value="{{ params.get('min_rooms', '') }}">
+      </div>
+      <div class="field">
+        <label for="max_rooms">Max rooms</label>
+        <input type="number" id="max_rooms" name="max_rooms" min="1" max="20"
+               value="{{ params.get('max_rooms', '') }}">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Property type</label>
+      <div class="checkbox-group">
+        {% for val, label in object_types %}
+          <label class="checkbox-label">
+            <input type="checkbox" name="object_type" value="{{ val }}"
+                   {% if val in params.get('object_type', []) %}checked{% endif %}>
+            {{ label }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Energy label</label>
+      <div class="checkbox-group checkbox-group-compact">
+        {% for label in energy_labels %}
+          <label class="checkbox-label">
+            <input type="checkbox" name="energy_label" value="{{ label }}"
+                   {% if label in params.get('energy_label', []) %}checked{% endif %}>
+            {{ label }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="radius_km">Radius</label>
+      <select id="radius_km" name="radius_km">
+        <option value="">Any (city-wide)</option>
+        {% for km in radius_options %}
+          <option value="{{ km }}"
+                  {% if params.get('radius_km') == km %}selected{% endif %}>
+            {{ km }} km
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="sort">Sort results by</label>
+      <select id="sort" name="sort">
+        {% for val, label in [
+            ('newest', 'Newest first'),
+            ('oldest', 'Oldest first'),
+            ('price_asc', 'Price: low to high'),
+            ('price_desc', 'Price: high to low'),
+            ('area_asc', 'Area: small to large'),
+            ('area_desc', 'Area: large to small'),
+        ] %}
+          <option value="{{ val }}"
+                  {% if params.get('sort', 'newest') == val %}selected{% endif %}>
+            {{ label }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <h2>Schedule</h2>
+    <div class="field">
+      <label for="interval_minutes">Check every</label>
+      <select id="interval_minutes" name="interval_minutes">
+        {% for minutes, label in intervals %}
+          <option value="{{ minutes }}"
+                  {% if (query.interval_minutes if query else 60) == minutes %}selected{% endif %}>
+            {{ label }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label class="checkbox-label">
+        <input type="checkbox" name="enabled_val" value="1"
+               {% if query is none or query.enabled %}checked{% endif %}>
+        Enable this query immediately
+      </label>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <a href="/" class="btn">Cancel</a>
+    <button type="submit" class="btn btn-primary">
+      {% if query %}Save changes{% else %}Create query{% endif %}
+    </button>
+  </div>
+</form>
+
+<script>
+  // Close autocomplete when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.autocomplete-wrap')) {
+      document.getElementById('autocomplete-results').innerHTML = '';
+    }
+  });
+  // Fill input when clicking a suggestion
+  document.body.addEventListener('click', function(e) {
+    const item = e.target.closest('.autocomplete-item');
+    if (item) {
+      document.getElementById('location').value = item.dataset.label;
+      document.getElementById('autocomplete-results').innerHTML = '';
+    }
+  });
+</script>
+{% endblock %}

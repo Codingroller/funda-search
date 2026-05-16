@@ -1,0 +1,52 @@
+<tr id="query-row-{{ query.id }}">
+  <td><a href="/queries/{{ query.id }}">{{ query.name }}</a></td>
+  <td>
+    {% for minutes, label in intervals %}
+      {% if minutes == query.interval_minutes %}{{ label }}{% endif %}
+    {% endfor %}
+  </td>
+  <td>
+    {% if query.last_run_at %}
+      {{ query.last_run_at.strftime('%d %b %H:%M') }}
+    {% else %}
+      <span class="text-muted">Never</span>
+    {% endif %}
+  </td>
+  <td>
+    {% if query.last_run_status == 'ok' %}
+      <span class="badge badge-ok">OK</span>
+    {% elif query.last_run_status == 'error' %}
+      <span class="badge badge-error">Error</span>
+    {% else %}
+      <span class="badge badge-none">—</span>
+    {% endif %}
+  </td>
+  <td>
+    <button
+      class="toggle-btn {% if query.enabled %}active{% endif %}"
+      hx-post="/queries/{{ query.id }}/toggle"
+      hx-target="#query-row-{{ query.id }}"
+      hx-swap="outerHTML"
+    >
+      {% if query.enabled %}On{% else %}Off{% endif %}
+    </button>
+  </td>
+  <td class="actions">
+    <a href="/queries/{{ query.id }}/edit" class="btn btn-sm">Edit</a>
+    <button
+      class="btn btn-sm"
+      hx-post="/queries/{{ query.id }}/run"
+      hx-target="#run-result-{{ query.id }}"
+      hx-swap="innerHTML"
+      hx-indicator="#run-result-{{ query.id }}"
+    >Run</button>
+    <button
+      class="btn btn-sm btn-danger"
+      hx-delete="/queries/{{ query.id }}"
+      hx-target="#query-row-{{ query.id }}"
+      hx-swap="outerHTML"
+      hx-confirm="Delete '{{ query.name }}'?"
+    >Delete</button>
+    <span id="run-result-{{ query.id }}" class="run-inline"></span>
+  </td>
+</tr>

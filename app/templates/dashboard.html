@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Funda Search{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>Saved Queries</h1>
+  <a href="/queries/new" class="btn btn-primary">+ New Query</a>
+</div>
+
+{% if queries %}
+<div class="table-wrap">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Interval</th>
+        <th>Last run</th>
+        <th>Status</th>
+        <th>Enabled</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for query in queries %}
+        {% include "partials/query_row.html" %}
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>No saved queries yet. <a href="/queries/new">Create your first query</a> to start getting alerts.</p>
+</div>
+{% endif %}
+{% endblock %}
