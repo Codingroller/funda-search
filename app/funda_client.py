@@ -10,7 +10,7 @@ except ImportError:
     ListingNotFound = LookupError  # type: ignore[assignment,misc]
 
 from app.db import AsyncSessionLocal
-from app.image_cache import cache_photo_sync
+from app.image_cache import cache_hero_sync, cache_photo_sync
 from app.models import ListingCache
 
 _pool = ThreadPoolExecutor(max_workers=4)
@@ -117,8 +117,11 @@ def _listing_detail_to_dict(listing) -> dict:
                 photos_raw.append(url)
 
     photos: list[str] = []
-    for url in photos_raw[:8]:
-        cached = cache_photo_sync(url)
+    for i, url in enumerate(photos_raw[:8]):
+        if i == 0:
+            cached = cache_hero_sync(url)   # full-quality, max 1200 px wide
+        else:
+            cached = cache_photo_sync(url)  # 320×240 thumbnail for gallery
         photos.append(cached or url)
 
     broker = None
