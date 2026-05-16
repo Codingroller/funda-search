@@ -47,16 +47,6 @@ uvicorn app.main:app --reload
 | `DB_PATH` | no | SQLite path (default `/data/funda.db`) |
 | `TZ` | no | Timezone for scheduler display (default `Europe/Amsterdam`) |
 
-## Deploying on Coolify
-
-1. Fork / push this repo to GitHub
-2. In Coolify → **New Resource → Application → Dockerfile**
-3. Set the GitHub repo, branch `main`
-4. Add a **Persistent Volume** mounted at `/data`
-5. Set env vars (`SECRET_KEY`, `ADMIN_PASSWORD`, `NTFY_BASE_URL`, …)
-6. Set domain and let Coolify provision Let's Encrypt
-7. Deploy — first boot creates the DB and your user automatically
-
 ## Running tests
 
 ```bash
