@@ -6,7 +6,8 @@ from app.funda_client import _listing_to_dict, _sync_search
 
 def _make_listing(global_id="123", price_formatted="€ 450.000 k.k.", price_amount=450000,
                   city="Amsterdam", title="Keizersgracht 1", living_area=85,
-                  rooms_count=4, bedrooms=2, energy_label="A", photo_urls=None, url="https://funda.nl/1"):
+                  rooms_count=4, bedrooms=2, energy_label="A", photo_urls=None,
+                  photo_ids=None, url="https://funda.nl/1"):
     listing = MagicMock()
     listing.global_id = global_id
     listing.url = url
@@ -21,7 +22,8 @@ def _make_listing(global_id="123", price_formatted="€ 450.000 k.k.", price_amo
     listing.price.formatted = price_formatted
     listing.price.amount = price_amount
     listing.media = MagicMock()
-    listing.media.photo_urls = photo_urls if photo_urls is not None else ["https://img.funda.nl/photo1.jpg"]
+    listing.media.photo_urls = photo_urls if photo_urls is not None else ("https://img.funda.nl/photo1.jpg",)
+    listing.media.photo_ids = photo_ids if photo_ids is not None else ()
     return listing
 
 
