@@ -240,3 +240,225 @@ async def test_listing_detail_not_found(authed, monkeypatch):
 
     r = await authed.get("/listings/bogus")
     assert r.status_code == 404
+
+
+async def test_listing_detail_slug_identifier_triggers_geocoding(authed, monkeypatch):
+    """When neighbourhood_identifier is a Funda URL slug (not a BU code),
+    get_buurtcode_from_coords must be called with the listing's lat/lon."""
+    import app.routes.queries as qroutes
+
+    slug_listing = {**_FAKE_LISTING, "neighbourhood_identifier": "almere/noorderplassen-w-west"}
+    geocode_calls = []
+
+    async def _fake_detail(gid):
+        return slug_listing
+
+    async def _fake_geocode(lat, lon):
+        geocode_calls.append((lat, lon))
+        return "BU00343102"
+
+    async def _fake_cbs(identifier):
+        return None
+
+    monkeypatch.setattr(qroutes, "get_listing_detail", _fake_detail)
+    monkeypatch.setattr(qroutes, "get_buurtcode_from_coords", _fake_geocode)
+    monkeypatch.setattr(qroutes, "get_neighbourhood_stats", _fake_cbs)
+
+    r = await authed.get("/listings/12345678")
+    assert r.status_code == 200
+    assert len(geocode_calls) == 1
+    assert geocode_calls[0] == (pytest.approx(52.387), pytest.approx(4.629))
+
+
+async def test_listing_detail_bu_identifier_skips_geocoding(authed, monkeypatch):
+    """When neighbourhood_identifier is already a valid CBS BU code, geocoding is skipped."""
+    import app.routes.queries as qroutes
+
+    geocode_calls = []
+
+    async def _fake_detail(gid):
+        return _FAKE_LISTING  # has neighbourhood_identifier="BU03920301"
+
+    async def _fake_geocode(lat, lon):
+        geocode_calls.append((lat, lon))
+        return "BU03920301"
+
+    async def _fake_cbs(identifier):
+        return None
+
+    monkeypatch.setattr(qroutes, "get_listing_detail", _fake_detail)
+    monkeypatch.setattr(qroutes, "get_buurtcode_from_coords", _fake_geocode)
+    monkeypatch.setattr(qroutes, "get_neighbourhood_stats", _fake_cbs)
+
+    r = await authed.get("/listings/12345678")
+    assert r.status_code == 200
+    assert geocode_calls == [], "Should not geocode when identifier starts with BU"
+
+
+# --- query CRUD ---
+
+async def test_query_create_redirects_to_dashboard(authed, monkeypatch):
+    import app.routes.queries as qroutes
+    monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
+
+    r = await authed.post("/queries", data={
+        "name": "My Test Query",
+        "location": "Amsterdam",
+        "category": "buy",
+        "sort": "newest",
+        "interval_minutes": "60",
+    })
+    assert r.status_code == 302
+    assert r.headers["location"] == "/"
+
+
+async def test_query_create_persists_to_db(authed, monkeypatch):
+    import app.routes.queries as qroutes
+    from app.models import SavedQuery
+    from sqlalchemy import select
+
+    monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
+
+    await authed.post("/queries", data={
+        "name": "Persist Test",
+        "location": "Utrecht",
+        "category": "rent",
+        "sort": "newest",
+        "interval_minutes": "30",
+    })
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(SavedQuery).where(SavedQuery.name == "Persist Test"))
+        query = result.scalar_one_or_none()
+
+    assert query is not None
+    assert query.interval_minutes == 30
+
+
+async def test_query_delete_removes_query(authed, monkeypatch):
+    import app.routes.queries as qroutes
+    from app.models import SavedQuery
+    from sqlalchemy import select
+
+    monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
+    monkeypatch.setattr(qroutes, "remove_query_job", lambda *a, **kw: None)
+
+    await authed.post("/queries", data={
+        "name": "Delete Me",
+        "location": "Haarlem",
+        "category": "buy",
+        "sort": "newest",
+        "interval_minutes": "60",
+    })
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(SavedQuery).where(SavedQuery.name == "Delete Me"))
+        query = result.scalar_one()
+
+    r = await authed.delete(f"/queries/{query.id}")
+    assert r.status_code == 200
+
+    async with AsyncSessionLocal() as db:
+        gone = await db.get(SavedQuery, query.id)
+    assert gone is None
+
+
+async def test_query_edit_form_renders(authed, monkeypatch):
+    import app.routes.queries as qroutes
+    from app.models import SavedQuery
+    from sqlalchemy import select
+
+    monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
+
+    await authed.post("/queries", data={
+        "name": "Edit Me",
+        "location": "Leiden",
+        "category": "buy",
+        "sort": "newest",
+        "interval_minutes": "60",
+    })
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(SavedQuery).where(SavedQuery.name == "Edit Me"))
+        query = result.scalar_one()
+
+    r = await authed.get(f"/queries/{query.id}/edit")
+    assert r.status_code == 200
+    assert b"Edit Me" in r.content
+
+
+async def test_query_toggle_flips_enabled(authed, monkeypatch):
+    import app.routes.queries as qroutes
+    from app.models import SavedQuery
+    from sqlalchemy import select
+
+    monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
+    monkeypatch.setattr(qroutes, "remove_query_job", lambda *a, **kw: None)
+
+    await authed.post("/queries", data={
+        "name": "Toggle Me",
+        "location": "Rotterdam",
+        "category": "buy",
+        "sort": "newest",
+        "interval_minutes": "60",
+    })
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(SavedQuery).where(SavedQuery.name == "Toggle Me"))
+        query = result.scalar_one()
+    original_state = query.enabled
+
+    r = await authed.post(f"/queries/{query.id}/toggle")
+    assert r.status_code == 200
+
+    async with AsyncSessionLocal() as db:
+        updated = await db.get(SavedQuery, query.id)
+    assert updated.enabled == (not original_state)
+
+
+async def test_listing_card_contains_view_details_link(authed, monkeypatch):
+    """The query detail page should render View details links on listing cards."""
+    import app.routes.queries as qroutes
+    import json
+    from app.models import SavedQuery, RunLog
+    from datetime import datetime
+
+    monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
+
+    await authed.post("/queries", data={
+        "name": "Card Link Test",
+        "location": "Almere",
+        "category": "buy",
+        "sort": "newest",
+        "interval_minutes": "60",
+    })
+    async with AsyncSessionLocal() as db:
+        from sqlalchemy import select
+        result = await db.execute(select(SavedQuery).where(SavedQuery.name == "Card Link Test"))
+        query = result.scalar_one()
+        now = datetime.utcnow()
+        db.add(RunLog(
+            query_id=query.id,
+            started_at=now,
+            finished_at=now,
+            status="ok",
+            result_count=1,
+            new_count=1,
+            new_listings_json=json.dumps([{
+                "global_id": "99887766",
+                "url": "https://funda.nl/1",
+                "title": "Teststraat 1",
+                "city": "Almere",
+                "price": "€ 300.000",
+                "price_per_m2": None,
+                "living_area": 80,
+                "rooms_count": 3,
+                "bedrooms": 2,
+                "energy_label": "B",
+                "photo_url": None,
+                "publication_date": None,
+            }]),
+        ))
+        await db.commit()
+
+    r = await authed.get(f"/queries/{query.id}")
+    assert r.status_code == 200
+    assert b"/listings/99887766" in r.content

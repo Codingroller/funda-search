@@ -204,3 +204,83 @@ async def test_format_price_filter():
     assert _format_price(670000) == "670.000"
     assert _format_price(1234567) == "1.234.567"
     assert _format_price(398000) == "398.000"
+
+
+# ---------------------------------------------------------------------------
+# get_buurtcode_from_coords
+# ---------------------------------------------------------------------------
+
+async def test_get_buurtcode_from_coords_success():
+    from app.cbs_client import get_buurtcode_from_coords
+
+    mock = AsyncMock()
+    mock.__aenter__ = AsyncMock(return_value=mock)
+    mock.__aexit__ = AsyncMock(return_value=False)
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    resp.json.return_value = {
+        "features": [{"properties": {"buurtcode": "BU03920301"}}]
+    }
+    mock.get = AsyncMock(return_value=resp)
+
+    with patch("app.cbs_client.httpx.AsyncClient", return_value=mock):
+        code = await get_buurtcode_from_coords(52.387, 4.629)
+
+    assert code == "BU03920301"
+
+
+async def test_get_buurtcode_from_coords_no_features_returns_none():
+    from app.cbs_client import get_buurtcode_from_coords
+
+    mock = AsyncMock()
+    mock.__aenter__ = AsyncMock(return_value=mock)
+    mock.__aexit__ = AsyncMock(return_value=False)
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    resp.json.return_value = {"features": []}
+    mock.get = AsyncMock(return_value=resp)
+
+    with patch("app.cbs_client.httpx.AsyncClient", return_value=mock):
+        code = await get_buurtcode_from_coords(0.0, 0.0)
+
+    assert code is None
+
+
+async def test_get_buurtcode_from_coords_network_error_returns_none():
+    from app.cbs_client import get_buurtcode_from_coords
+
+    mock = AsyncMock()
+    mock.__aenter__ = AsyncMock(return_value=mock)
+    mock.__aexit__ = AsyncMock(return_value=False)
+    mock.get = AsyncMock(side_effect=Exception("timeout"))
+
+    with patch("app.cbs_client.httpx.AsyncClient", return_value=mock):
+        code = await get_buurtcode_from_coords(52.0, 4.0)
+
+    assert code is None
+
+
+async def test_get_buurtcode_from_coords_includes_point_in_bbox():
+    """Verify the bbox query is centred on the given coordinates."""
+    from app.cbs_client import get_buurtcode_from_coords
+
+    captured = {}
+
+    async def _get(url, **kwargs):
+        captured["bbox"] = kwargs.get("params", {}).get("bbox", "")
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json.return_value = {"features": []}
+        return resp
+
+    mock = AsyncMock()
+    mock.__aenter__ = AsyncMock(return_value=mock)
+    mock.__aexit__ = AsyncMock(return_value=False)
+    mock.get = _get
+
+    with patch("app.cbs_client.httpx.AsyncClient", return_value=mock):
+        await get_buurtcode_from_coords(52.0, 5.0)
+
+    parts = [float(x) for x in captured["bbox"].split(",")]
+    assert parts[0] < 5.0 < parts[2]   # lon inside bbox
+    assert parts[1] < 52.0 < parts[3]  # lat inside bbox
