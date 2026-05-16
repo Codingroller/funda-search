@@ -1,12 +1,20 @@
 import asyncio
+import json
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
 
 try:
-    from funda import Funda  # noqa: F401 — imported for testability
+    from funda import Funda, ListingNotFound  # noqa: F401 — imported for testability
 except ImportError:
     Funda = None  # type: ignore[assignment,misc]
+    ListingNotFound = LookupError  # type: ignore[assignment,misc]
+
+from app.db import AsyncSessionLocal
+from app.image_cache import cache_photo_sync
+from app.models import ListingCache
 
 _pool = ThreadPoolExecutor(max_workers=4)
+_LISTING_TTL = timedelta(hours=24)
 
 
 def _fmt_price_per_m2(amount: int | None, area: int | None) -> str | None:
@@ -88,3 +96,107 @@ async def search_listings(params: dict) -> list[dict]:
 async def autocomplete(value: str) -> list[dict]:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_pool, _sync_autocomplete, value)
+
+
+def _listing_detail_to_dict(listing) -> dict:
+    price = None
+    price_amount = None
+    if listing.price:
+        price_amount = getattr(listing.price, "amount", None)
+        price = getattr(listing.price, "formatted", None) or (
+            f"€{price_amount:,}" if price_amount else None
+        )
+
+    addr = listing.address
+    photos_raw: list[str] = []
+    media = getattr(listing, "media", None)
+    if media:
+        for item in list(getattr(media, "photos", ()))[:20]:
+            url = getattr(item, "url", None)
+            if url:
+                photos_raw.append(url)
+
+    photos: list[str] = []
+    for url in photos_raw[:8]:
+        cached = cache_photo_sync(url)
+        photos.append(cached or url)
+
+    broker = None
+    raw_broker = getattr(listing, "broker", None)
+    if raw_broker:
+        broker = {
+            "name": getattr(raw_broker, "name", None),
+            "association": getattr(raw_broker, "association", None),
+            "relative_url": getattr(raw_broker, "relative_url", None),
+        }
+
+    loc = getattr(listing, "location", None)
+    lat = getattr(loc, "latitude", None) if loc else None
+    lon = getattr(loc, "longitude", None) if loc else None
+
+    pd = getattr(listing, "property_details", None)
+    pub_date = getattr(listing, "publication_date", None)
+
+    return {
+        "global_id": str(listing.global_id),
+        "url": listing.url,
+        "title": listing.title,
+        "street": getattr(addr, "street_name", None),
+        "house_number": getattr(addr, "house_number", None),
+        "house_number_suffix": getattr(addr, "house_number_suffix", None),
+        "postcode": getattr(addr, "postcode", None),
+        "city": getattr(addr, "city", None),
+        "municipality": getattr(addr, "municipality", None),
+        "neighbourhood": getattr(addr, "neighbourhood", None),
+        "neighbourhood_identifier": getattr(addr, "neighbourhood_identifier", None),
+        "lat": lat,
+        "lon": lon,
+        "price": price,
+        "price_per_m2": _fmt_price_per_m2(price_amount, getattr(listing, "living_area", None)),
+        "living_area": getattr(listing, "living_area", None),
+        "plot_area": getattr(listing, "plot_area", None),
+        "rooms_count": getattr(listing, "rooms_count", None),
+        "bedrooms": getattr(listing, "bedrooms", None),
+        "energy_label": getattr(listing, "energy_label", None),
+        "object_type": getattr(pd, "object_type", None) if pd else None,
+        "house_type": getattr(pd, "house_type", None) if pd else None,
+        "construction_year": getattr(pd, "construction_year", None) if pd else None,
+        "description_title": getattr(listing, "description_title", None),
+        "description": getattr(listing, "description", None),
+        "photos": photos,
+        "broker": broker,
+        "publication_date": pub_date if isinstance(pub_date, str) else (pub_date.isoformat() if pub_date else None),
+    }
+
+
+def _sync_listing_detail(global_id: str) -> dict:
+    with Funda(timeout=30, max_retries=3, retry_backoff=0.5) as client:
+        listing = client.listing(int(global_id))
+    return _listing_detail_to_dict(listing)
+
+
+async def get_listing_detail(global_id: str) -> dict:
+    """Fetch full listing detail; check ListingCache first (24 h TTL)."""
+    async with AsyncSessionLocal() as db:
+        row = await db.get(ListingCache, global_id)
+        if row and (datetime.utcnow() - row.fetched_at) < _LISTING_TTL:
+            return json.loads(row.payload_json)
+
+    loop = asyncio.get_running_loop()
+    payload = await loop.run_in_executor(_pool, _sync_listing_detail, global_id)
+
+    async with AsyncSessionLocal() as db:
+        now = datetime.utcnow()
+        row = await db.get(ListingCache, global_id)
+        if row:
+            row.payload_json = json.dumps(payload)
+            row.fetched_at = now
+        else:
+            db.add(ListingCache(
+                global_id=global_id,
+                payload_json=json.dumps(payload),
+                fetched_at=now,
+            ))
+        await db.commit()
+
+    return payload

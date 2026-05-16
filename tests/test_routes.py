@@ -133,3 +133,113 @@ async def test_nonexistent_query_returns_404(authed):
 async def test_query_detail_unauthenticated_redirects(anon):
     r = await anon.get("/queries/1")
     assert r.status_code == 302
+
+
+# --- listing detail ---
+
+_FAKE_LISTING = {
+    "global_id": "12345678",
+    "url": "https://www.funda.nl/koop/haarlem/huis-12345678/",
+    "title": "Coltermanstraat 10R",
+    "street": "Coltermanstraat",
+    "house_number": "10",
+    "house_number_suffix": "R",
+    "postcode": "2014 EM",
+    "city": "Haarlem",
+    "municipality": "Haarlem",
+    "neighbourhood": "Garenkokerskwartier",
+    "neighbourhood_identifier": "BU03920301",
+    "lat": 52.387,
+    "lon": 4.629,
+    "price": "€ 545.000",
+    "price_per_m2": "€ 6.412 / m²",
+    "living_area": 85,
+    "plot_area": None,
+    "rooms_count": 3,
+    "bedrooms": 2,
+    "energy_label": "B",
+    "object_type": "Apartment",
+    "house_type": None,
+    "construction_year": 1925,
+    "description_title": "Prachtig appartement",
+    "description": "Ruim appartement in het hart van Haarlem.",
+    "photos": [],
+    "broker": {"name": "Makelaardij Test", "association": "NVM", "relative_url": None},
+    "publication_date": "2025-05-01",
+}
+
+
+async def test_listing_detail_unauthenticated_redirects(anon):
+    r = await anon.get("/listings/12345678")
+    assert r.status_code == 302
+    assert "/login" in r.headers["location"]
+
+
+async def test_listing_detail_renders(authed, monkeypatch):
+    import app.routes.queries as qroutes
+    async def _fake_detail(gid):
+        return _FAKE_LISTING
+    async def _fake_cbs(lat, lon):
+        return None
+    monkeypatch.setattr(qroutes, "get_listing_detail", _fake_detail)
+    monkeypatch.setattr(qroutes, "get_neighbourhood_stats", _fake_cbs)
+
+    r = await authed.get("/listings/12345678")
+    assert r.status_code == 200
+    assert b"Coltermanstraat 10R" in r.content
+    assert b"545.000" in r.content
+
+
+async def test_listing_detail_with_cbs(authed, monkeypatch):
+    import app.routes.queries as qroutes
+    async def _fake_detail(gid):
+        return _FAKE_LISTING
+    async def _fake_cbs(lat, lon):
+        return {
+            "buurt": {"buurtnaam": "Garenkokerskwartier", "aantal_inwoners": 1985,
+                      "aantal_huishoudens": 970, "bevolkingsdichtheid_inwoners_per_km2": 10451,
+                      "gemiddelde_huishoudsgrootte": 2.0, "oppervlakte_land_in_ha": 19,
+                      "percentage_eenpersoonshuishoudens": 42,
+                      "percentage_huishoudens_met_kinderen": 29,
+                      "percentage_huishoudens_zonder_kinderen": 29,
+                      "percentage_personen_0_tot_15_jaar": 16,
+                      "percentage_personen_15_tot_25_jaar": 10,
+                      "percentage_personen_25_tot_45_jaar": 26,
+                      "percentage_personen_45_tot_65_jaar": 30,
+                      "percentage_personen_65_jaar_en_ouder": 18,
+                      "percentage_met_herkomstland_nederland": 70,
+                      "percentage_met_herkomstland_uit_europa_excl_nl": 15,
+                      "percentage_met_herkomstland_buiten_europa": 15},
+            "wijk": {"wijknaam": "Zijlwegkwartier", "aantal_inwoners": 8180,
+                     "aantal_huishoudens": 4105, "bevolkingsdichtheid_inwoners_per_km2": 12654,
+                     "gemiddelde_huishoudsgrootte": 2.0, "oppervlakte_land_in_ha": 65,
+                     "percentage_eenpersoonshuishoudens": 44,
+                     "percentage_huishoudens_met_kinderen": 31,
+                     "percentage_huishoudens_zonder_kinderen": 25,
+                     "percentage_personen_0_tot_15_jaar": 16,
+                     "percentage_personen_15_tot_25_jaar": 10,
+                     "percentage_personen_25_tot_45_jaar": 30,
+                     "percentage_personen_45_tot_65_jaar": 29,
+                     "percentage_personen_65_jaar_en_ouder": 15,
+                     "percentage_met_herkomstland_nederland": 65,
+                     "percentage_met_herkomstland_uit_europa_excl_nl": 15,
+                     "percentage_met_herkomstland_buiten_europa": 15},
+        }
+    monkeypatch.setattr(qroutes, "get_listing_detail", _fake_detail)
+    monkeypatch.setattr(qroutes, "get_neighbourhood_stats", _fake_cbs)
+
+    r = await authed.get("/listings/12345678")
+    assert r.status_code == 200
+    assert b"Garenkokerskwartier" in r.content
+    assert b"Zijlwegkwartier" in r.content
+    assert b"1985" in r.content
+
+
+async def test_listing_detail_not_found(authed, monkeypatch):
+    import app.routes.queries as qroutes
+    async def _raise(gid):
+        raise LookupError("not found")
+    monkeypatch.setattr(qroutes, "get_listing_detail", _raise)
+
+    r = await authed.get("/listings/bogus")
+    assert r.status_code == 404

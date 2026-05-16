@@ -7,9 +7,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
 from app.auth import require_auth
+from app.cbs_client import get_neighbourhood_stats
 from app.db import AsyncSessionLocal
 from app.funda_client import autocomplete as funda_autocomplete
-from app.funda_client import search_listings
+from app.funda_client import get_listing_detail, search_listings
 from app.models import RunLog, SavedQuery, SeenListing
 from app.scheduler import add_query_job, remove_query_job, run_query_job
 from app.templates_env import templates
@@ -276,4 +277,24 @@ async def autocomplete_endpoint(request: Request, q: str = ""):
     suggestions = await funda_autocomplete(q)
     return templates.TemplateResponse(
         request, "partials/autocomplete.html", {"suggestions": suggestions}
+    )
+
+
+@router.get("/listings/{global_id}", response_class=HTMLResponse)
+async def listing_detail_page(request: Request, global_id: str):
+    try:
+        listing = await get_listing_detail(global_id)
+    except (LookupError, Exception) as exc:
+        if isinstance(exc, LookupError):
+            raise HTTPException(404)
+        raise HTTPException(502, detail="Could not load listing from Funda")
+
+    cbs = None
+    if listing.get("lat") and listing.get("lon"):
+        cbs = await get_neighbourhood_stats(listing["lat"], listing["lon"])
+
+    back_url = request.headers.get("referer") or "/"
+    return templates.TemplateResponse(
+        request, "listing_detail.html",
+        {"listing": listing, "cbs": cbs, "back_url": back_url},
     )

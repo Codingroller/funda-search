@@ -12,6 +12,9 @@
     {% if listing.energy_label %}
     <span class="energy-label label-{{ listing.energy_label | replace('+', 'p') }}">{{ listing.energy_label }}</span>
     {% endif %}
+    {% if listing.global_id %}
+    <a class="listing-details-link" href="/listings/{{ listing.global_id }}">View details →</a>
+    {% endif %}
   </div>
   {% if listing.photo_url %}
   <a href="{{ listing.url }}" target="_blank" class="listing-photo-link">

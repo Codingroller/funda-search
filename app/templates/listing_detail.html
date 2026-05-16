@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}{{ listing.title or listing.global_id }} — Funda Search{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <a href="{{ back_url }}" class="btn btn-sm" style="margin-bottom:8px">← Back</a>
+    <h1>{{ listing.title }}</h1>
+    {% if listing.postcode or listing.city %}
+    <p class="text-muted" style="font-size:14px">
+      {% if listing.postcode %}{{ listing.postcode }}{% endif %}
+      {% if listing.city %} {{ listing.city }}{% endif %}
+      {% if listing.municipality and listing.municipality != listing.city %} · {{ listing.municipality }}{% endif %}
+    </p>
+    {% endif %}
+  </div>
+  <div class="header-actions">
+    <a href="{{ listing.url }}" target="_blank" rel="noopener" class="btn btn-primary">
+      View on Funda ↗
+    </a>
+  </div>
+</div>
+
+{# Hero photo #}
+{% if listing.photos %}
+<div class="detail-hero">
+  <img src="{{ listing.photos[0] }}" alt="{{ listing.title }}" class="detail-hero-img">
+</div>
+{% endif %}
+
+{# Key stats row #}
+<div class="detail-meta-row">
+  <div class="detail-price-block">
+    <span class="detail-price">{{ listing.price or 'Price on request' }}</span>
+    {% if listing.price_per_m2 %}<span class="detail-ppm2">{{ listing.price_per_m2 }}</span>{% endif %}
+  </div>
+  <div class="detail-tags">
+    {% if listing.living_area %}<span class="detail-tag">{{ listing.living_area }} m²</span>{% endif %}
+    {% if listing.plot_area %}<span class="detail-tag">Plot {{ listing.plot_area }} m²</span>{% endif %}
+    {% if listing.rooms_count %}<span class="detail-tag">{{ listing.rooms_count }} rooms</span>{% endif %}
+    {% if listing.bedrooms %}<span class="detail-tag">{{ listing.bedrooms }} bedrooms</span>{% endif %}
+    {% if listing.energy_label %}<span class="energy-label label-{{ listing.energy_label | replace('+','p') }}" style="font-size:13px;padding:3px 8px">{{ listing.energy_label }}</span>{% endif %}
+    {% if listing.construction_year %}<span class="detail-tag">Built {{ listing.construction_year }}</span>{% endif %}
+    {% if listing.object_type %}<span class="detail-tag">{{ listing.object_type | capitalize }}</span>{% endif %}
+  </div>
+</div>
+
+{# Gallery thumbnails (skip index 0, shown as hero) #}
+{% if listing.photos | length > 1 %}
+<div class="detail-gallery">
+  {% for photo in listing.photos[1:] %}
+  <img src="{{ photo }}" alt="Photo {{ loop.index + 1 }}" class="detail-thumb" loading="lazy">
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Description #}
+{% if listing.description %}
+<div class="detail-section">
+  {% if listing.description_title %}<h2 class="detail-section-title">{{ listing.description_title }}</h2>{% else %}<h2 class="detail-section-title">About this listing</h2>{% endif %}
+  <div class="detail-description">
+    {% for para in listing.description.split('\n') %}
+      {% if para.strip() %}<p>{{ para.strip() }}</p>{% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# Neighbourhood stats #}
+{% if cbs %}
+<div class="detail-section">
+  <h2 class="detail-section-title">
+    Neighbourhood
+    {% if cbs.buurt %}<span class="text-muted" style="font-weight:400"> · {{ cbs.buurt.buurtnaam }}</span>{% endif %}
+    {% if cbs.wijk %}<span class="text-muted" style="font-weight:400"> · {{ cbs.wijk.wijknaam }}</span>{% endif %}
+  </h2>
+  <div class="neighbourhood-panels">
+
+    {% if cbs.buurt %}
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ cbs.buurt.buurtnaam }} <span class="text-muted" style="font-weight:400;font-size:12px">(buurt)</span></h3>
+      <div class="stats-grid">
+        <div class="stat-row"><span class="stat-label">Residents</span><span class="stat-value">{{ cbs.buurt.aantal_inwoners | cbs_value }}</span></div>
+        <div class="stat-row"><span class="stat-label">Households</span><span class="stat-value">{{ cbs.buurt.aantal_huishoudens | cbs_value }}</span></div>
+        <div class="stat-row"><span class="stat-label">Avg. household size</span><span class="stat-value">{{ cbs.buurt.gemiddelde_huishoudsgrootte | cbs_value }}</span></div>
+        <div class="stat-row"><span class="stat-label">Pop. density</span><span class="stat-value">{{ cbs.buurt.bevolkingsdichtheid_inwoners_per_km2 | cbs_value }}{% if cbs.buurt.bevolkingsdichtheid_inwoners_per_km2 != -99997 %} /km²{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">Land area</span><span class="stat-value">{{ cbs.buurt.oppervlakte_land_in_ha | cbs_value }}{% if cbs.buurt.oppervlakte_land_in_ha != -99997 %} ha{% endif %}</span></div>
+      </div>
+      <div class="nb-subheading">Households</div>
+      <div class="stats-grid">
+        <div class="stat-row"><span class="stat-label">Single-person</span><span class="stat-value">{{ cbs.buurt.percentage_eenpersoonshuishoudens | cbs_value }}{% if cbs.buurt.percentage_eenpersoonshuishoudens != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">With children</span><span class="stat-value">{{ cbs.buurt.percentage_huishoudens_met_kinderen | cbs_value }}{% if cbs.buurt.percentage_huishoudens_met_kinderen != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">Without children</span><span class="stat-value">{{ cbs.buurt.percentage_huishoudens_zonder_kinderen | cbs_value }}{% if cbs.buurt.percentage_huishoudens_zonder_kinderen != -99997 %}%{% endif %}</span></div>
+      </div>
+      <div class="nb-subheading">Age distribution</div>
+      <div class="stats-grid">
+        <div class="stat-row"><span class="stat-label">0–15</span><span class="stat-value">{{ cbs.buurt.percentage_personen_0_tot_15_jaar | cbs_value }}{% if cbs.buurt.percentage_personen_0_tot_15_jaar != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">15–25</span><span class="stat-value">{{ cbs.buurt.percentage_personen_15_tot_25_jaar | cbs_value }}{% if cbs.buurt.percentage_personen_15_tot_25_jaar != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">25–45</span><span class="stat-value">{{ cbs.buurt.percentage_personen_25_tot_45_jaar | cbs_value }}{% if cbs.buurt.percentage_personen_25_tot_45_jaar != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">45–65</span><span class="stat-value">{{ cbs.buurt.percentage_personen_45_tot_65_jaar | cbs_value }}{% if cbs.buurt.percentage_personen_45_tot_65_jaar != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">65+</span><span class="stat-value">{{ cbs.buurt.percentage_personen_65_jaar_en_ouder | cbs_value }}{% if cbs.buurt.percentage_personen_65_jaar_en_ouder != -99997 %}%{% endif %}</span></div>
+      </div>
+      <div class="nb-subheading">Heritage</div>
+      <div class="stats-grid">
+        <div class="stat-row"><span class="stat-label">Netherlands</span><span class="stat-value">{{ cbs.buurt.percentage_met_herkomstland_nederland | cbs_value }}{% if cbs.buurt.percentage_met_herkomstland_nederland != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">Europe (excl. NL)</span><span class="stat-value">{{ cbs.buurt.percentage_met_herkomstland_uit_europa_excl_nl | cbs_value }}{% if cbs.buurt.percentage_met_herkomstland_uit_europa_excl_nl != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">Outside Europe</span><span class="stat-value">{{ cbs.buurt.percentage_met_herkomstland_buiten_europa | cbs_value }}{% if cbs.buurt.percentage_met_herkomstland_buiten_europa != -99997 %}%{% endif %}</span></div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if cbs.wijk %}
+    <div class="card neighbourhood-card">
+      <h3 class="nb-card-title">{{ cbs.wijk.wijknaam }} <span class="text-muted" style="font-weight:400;font-size:12px">(wijk)</span></h3>
+      <div class="stats-grid">
+        <div class="stat-row"><span class="stat-label">Residents</span><span class="stat-value">{{ cbs.wijk.aantal_inwoners | cbs_value }}</span></div>
+        <div class="stat-row"><span class="stat-label">Households</span><span class="stat-value">{{ cbs.wijk.aantal_huishoudens | cbs_value }}</span></div>
+        <div class="stat-row"><span class="stat-label">Avg. household size</span><span class="stat-value">{{ cbs.wijk.gemiddelde_huishoudsgrootte | cbs_value }}</span></div>
+        <div class="stat-row"><span class="stat-label">Pop. density</span><span class="stat-value">{{ cbs.wijk.bevolkingsdichtheid_inwoners_per_km2 | cbs_value }}{% if cbs.wijk.bevolkingsdichtheid_inwoners_per_km2 != -99997 %} /km²{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">Land area</span><span class="stat-value">{{ cbs.wijk.oppervlakte_land_in_ha | cbs_value }}{% if cbs.wijk.oppervlakte_land_in_ha != -99997 %} ha{% endif %}</span></div>
+      </div>
+      <div class="nb-subheading">Households</div>
+      <div class="stats-grid">
+        <div class="stat-row"><span class="stat-label">Single-person</span><span class="stat-value">{{ cbs.wijk.percentage_eenpersoonshuishoudens | cbs_value }}{% if cbs.wijk.percentage_eenpersoonshuishoudens != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">With children</span><span class="stat-value">{{ cbs.wijk.percentage_huishoudens_met_kinderen | cbs_value }}{% if cbs.wijk.percentage_huishoudens_met_kinderen != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">Without children</span><span class="stat-value">{{ cbs.wijk.percentage_huishoudens_zonder_kinderen | cbs_value }}{% if cbs.wijk.percentage_huishoudens_zonder_kinderen != -99997 %}%{% endif %}</span></div>
+      </div>
+      <div class="nb-subheading">Age distribution</div>
+      <div class="stats-grid">
+        <div class="stat-row"><span class="stat-label">0–15</span><span class="stat-value">{{ cbs.wijk.percentage_personen_0_tot_15_jaar | cbs_value }}{% if cbs.wijk.percentage_personen_0_tot_15_jaar != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">15–25</span><span class="stat-value">{{ cbs.wijk.percentage_personen_15_tot_25_jaar | cbs_value }}{% if cbs.wijk.percentage_personen_15_tot_25_jaar != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">25–45</span><span class="stat-value">{{ cbs.wijk.percentage_personen_25_tot_45_jaar | cbs_value }}{% if cbs.wijk.percentage_personen_25_tot_45_jaar != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">45–65</span><span class="stat-value">{{ cbs.wijk.percentage_personen_45_tot_65_jaar | cbs_value }}{% if cbs.wijk.percentage_personen_45_tot_65_jaar != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">65+</span><span class="stat-value">{{ cbs.wijk.percentage_personen_65_jaar_en_ouder | cbs_value }}{% if cbs.wijk.percentage_personen_65_jaar_en_ouder != -99997 %}%{% endif %}</span></div>
+      </div>
+      <div class="nb-subheading">Heritage</div>
+      <div class="stats-grid">
+        <div class="stat-row"><span class="stat-label">Netherlands</span><span class="stat-value">{{ cbs.wijk.percentage_met_herkomstland_nederland | cbs_value }}{% if cbs.wijk.percentage_met_herkomstland_nederland != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">Europe (excl. NL)</span><span class="stat-value">{{ cbs.wijk.percentage_met_herkomstland_uit_europa_excl_nl | cbs_value }}{% if cbs.wijk.percentage_met_herkomstland_uit_europa_excl_nl != -99997 %}%{% endif %}</span></div>
+        <div class="stat-row"><span class="stat-label">Outside Europe</span><span class="stat-value">{{ cbs.wijk.percentage_met_herkomstland_buiten_europa | cbs_value }}{% if cbs.wijk.percentage_met_herkomstland_buiten_europa != -99997 %}%{% endif %}</span></div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+  <p class="text-muted small" style="margin-top:8px">Source: CBS Wijken en Buurten 2025 via PDOK</p>
+</div>
+{% endif %}
+
+{# Broker #}
+{% if listing.broker %}
+<div class="detail-section" style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
+  <span class="text-muted small">
+    Listed by <strong>{{ listing.broker.name or '—' }}</strong>
+    {% if listing.broker.association %} · {{ listing.broker.association }}{% endif %}
+  </span>
+</div>
+{% endif %}
+
+{% endblock %}
