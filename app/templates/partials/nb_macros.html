@@ -1,9 +1,7 @@
 {% macro nb_col_header(buurt_name, wijk_name) %}
-<div class="nb-row nb-row-header">
-  <span></span>
-  <span style="text-align:right">{{ buurt_name }}</span>
-  <span style="text-align:right">{{ wijk_name }}</span>
-  <span></span>
+<div class="nb-colheader">
+  <span class="nb-colheader-b" title="{{ buurt_name }}">{{ buurt_name }}</span>
+  <span class="nb-colheader-w" title="{{ wijk_name }}">{{ wijk_name }}</span>
 </div>
 {% endmacro %}
 
