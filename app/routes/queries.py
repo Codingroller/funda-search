@@ -291,7 +291,8 @@ async def listing_detail_page(request: Request, global_id: str):
 
     cbs = None
     identifier = listing.get("neighbourhood_identifier")
-    if not identifier and listing.get("lat") and listing.get("lon"):
+    # pyfunda returns a URL slug, not a CBS buurtcode — geocode from lat/lon when needed
+    if (not identifier or not str(identifier).upper().startswith("BU")) and listing.get("lat") and listing.get("lon"):
         identifier = await get_buurtcode_from_coords(listing["lat"], listing["lon"])
     if identifier:
         cbs = await get_neighbourhood_stats(identifier)
