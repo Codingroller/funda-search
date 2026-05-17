@@ -1,0 +1,64 @@
+<div class="sharing-section">
+
+  {# ── Pending invites received ── #}
+  {% for invite in pending_received %}
+  <div class="invite-card">
+    <span><strong>{{ invite.username }}</strong> wants to share their liked houses with you.</span>
+    <div class="invite-actions">
+      <button class="btn btn-primary btn-sm"
+        hx-post="/liked/invite/{{ invite.id }}/accept"
+        hx-swap="none">Accept</button>
+      <button class="btn btn-sm"
+        hx-post="/liked/invite/{{ invite.id }}/decline"
+        hx-target="closest .sharing-section"
+        hx-swap="outerHTML">Decline</button>
+    </div>
+  </div>
+  {% endfor %}
+
+  {# ── Active partners ── #}
+  {% if active_partners %}
+  <div class="share-active">
+    <span class="share-label">Sharing with</span>
+    {% for partner in active_partners %}
+    <div class="share-partner-row">
+      <span class="share-partner-name">{{ partner.username }}</span>
+      <button class="btn btn-sm btn-danger"
+        hx-delete="/liked/connection/{{ partner.id }}"
+        hx-target="closest .sharing-section"
+        hx-swap="outerHTML"
+        hx-confirm="Stop sharing with {{ partner.username }}?">Stop sharing</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ── Pending sent ── #}
+  {% if pending_sent %}
+  <div class="share-pending-sent">
+    <span class="share-label">Invite pending</span>
+    {% for s in pending_sent %}
+    <span class="badge badge-none">{{ s.username }} — waiting for response</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# ── Invite form ── #}
+  <details class="share-invite-wrap" {% if share_error %}open{% endif %}>
+    <summary class="share-invite-toggle">Invite someone to collaborate</summary>
+    <form class="share-invite-form"
+      hx-post="/liked/invite"
+      hx-target="closest .sharing-section"
+      hx-swap="outerHTML">
+      {% if share_error %}
+      <p class="share-error">{{ share_error }}</p>
+      {% endif %}
+      <div class="share-invite-row">
+        <input type="text" name="username" placeholder="username" required
+               class="share-username-input" autocomplete="off">
+        <button type="submit" class="btn btn-primary btn-sm">Invite</button>
+      </div>
+    </form>
+  </details>
+
+</div>

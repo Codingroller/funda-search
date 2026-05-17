@@ -687,3 +687,116 @@ async def test_liked_checklist_unchecked_clears_agent(authed):
 
     assert row is not None
     assert row.agent_contacted is False
+
+
+# --- sharing / collaboration ---
+
+async def test_send_invite(authed, authed2):
+    """User1 can invite user2 by username."""
+    from app.models import SharingConnection
+
+    r = await authed.post("/liked/invite", data={"username": _USERNAME2})
+    assert r.status_code == 200
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(SharingConnection))
+        conn = result.scalar_one_or_none()
+    assert conn is not None
+    assert conn.status == "pending"
+
+
+async def test_accept_invite_shows_merged_view(authed, authed2):
+    """After accept, both users see a merged liked page."""
+    from app.models import SharingConnection
+
+    # user1 likes a listing
+    await authed.post("/listings/merge001/like")
+    # user2 likes a different listing
+    await authed2.post("/listings/merge002/like")
+
+    # user1 invites user2
+    await authed.post("/liked/invite", data={"username": _USERNAME2})
+    async with AsyncSessionLocal() as db:
+        conn = (await db.execute(select(SharingConnection))).scalar_one()
+
+    # user2 accepts
+    r = await authed2.post(f"/liked/invite/{conn.id}/accept")
+    assert r.status_code == 200  # HX-Refresh response
+
+    # Both see merged liked page
+    r1 = await authed.get("/liked")
+    r2 = await authed2.get("/liked")
+    assert b"merge001" in r1.content
+    assert b"merge002" in r1.content  # partner's listing visible to user1
+    assert b"merge001" in r2.content  # user1's listing visible to user2
+    assert b"merge002" in r2.content
+
+
+async def test_collab_editing_partner_listing(authed, authed2):
+    """User1 can edit user2's listing checklist via collab route."""
+    from app.models import LikedListing, SharingConnection
+
+    await authed2.post("/listings/collab001/like")
+    await authed.post("/liked/invite", data={"username": _USERNAME2})
+    async with AsyncSessionLocal() as db:
+        conn = (await db.execute(select(SharingConnection))).scalar_one()
+        u2 = (await db.execute(select(User).where(User.username == _USERNAME2))).scalar_one()
+
+    await authed2.post(f"/liked/invite/{conn.id}/accept")
+
+    # User1 edits user2's listing
+    r = await authed.post(
+        f"/liked/collab/{u2.id}/collab001/checklist",
+        data={"agent_contacted": "1", "viewing_date": "2026-07-01", "bid_amount": ""},
+    )
+    assert r.status_code == 200
+
+    async with AsyncSessionLocal() as db:
+        row = (await db.execute(
+            select(LikedListing).where(LikedListing.global_id == "collab001")
+        )).scalar_one()
+    assert row.agent_contacted is True
+    assert row.viewing_date == "2026-07-01"
+
+
+async def test_stop_sharing_returns_own_listings_only(authed, authed2):
+    """After stop sharing, each user sees only their own listings."""
+    from app.models import SharingConnection
+
+    await authed.post("/listings/stop001/like")
+    await authed2.post("/listings/stop002/like")
+    await authed.post("/liked/invite", data={"username": _USERNAME2})
+    async with AsyncSessionLocal() as db:
+        conn = (await db.execute(select(SharingConnection))).scalar_one()
+        u2 = (await db.execute(select(User).where(User.username == _USERNAME2))).scalar_one()
+
+    await authed2.post(f"/liked/invite/{conn.id}/accept")
+
+    # Stop sharing (user1 removes user2)
+    r = await authed.delete(f"/liked/connection/{u2.id}")
+    assert r.status_code == 200
+
+    r1 = await authed.get("/liked")
+    assert b"stop001" in r1.content
+    assert b"stop002" not in r1.content  # partner's listing gone
+
+
+async def test_collab_edit_requires_accepted_connection(authed, authed2):
+    """Collab edit without accepted connection → 403."""
+    from app.models import User
+
+    await authed2.post("/listings/auth001/like")
+    async with AsyncSessionLocal() as db:
+        u2 = (await db.execute(select(User).where(User.username == _USERNAME2))).scalar_one()
+
+    r = await authed.post(
+        f"/liked/collab/{u2.id}/auth001/notes",
+        data={"notes": "should be blocked"},
+    )
+    assert r.status_code == 403
+
+
+async def test_invite_nonexistent_user(authed):
+    r = await authed.post("/liked/invite", data={"username": "doesnotexist"})
+    assert r.status_code == 200
+    assert b"No user" in r.content

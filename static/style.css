@@ -328,6 +328,46 @@ a:hover { text-decoration: underline; }
 }
 .liked-notes-area:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 
+/* Sharing / collaboration UI */
+.sharing-section { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+.invite-card {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius); padding: 12px 14px;
+}
+.invite-actions { display: flex; gap: 8px; }
+.share-active, .share-pending-sent {
+  background: #fff; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px;
+}
+.share-label {
+  display: block; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-muted); margin-bottom: 8px;
+}
+.share-partner-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 4px 0; border-bottom: 1px solid #f3f4f6;
+}
+.share-partner-row:last-child { border-bottom: none; }
+.share-partner-name { font-size: 14px; font-weight: 500; }
+.share-invite-wrap { border: 1px solid var(--border); border-radius: var(--radius); }
+.share-invite-toggle { padding: 10px 14px; cursor: pointer; list-style: none; font-size: 13px; color: var(--text-muted); font-weight: 500; }
+.share-invite-toggle::-webkit-details-marker { display: none; }
+.share-invite-form { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
+.share-invite-row { display: flex; gap: 8px; align-items: center; }
+.share-username-input {
+  flex: 1; padding: 7px 10px; border: 1px solid var(--border);
+  border-radius: var(--radius); font-size: 14px; font-family: var(--font);
+}
+.share-username-input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+.share-error { color: var(--danger); font-size: 13px; margin-bottom: 8px; }
+.share-pending-sent { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* Owner badge on merged liked cards */
+.owner-badge-bar { padding: 4px 12px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; }
+.owner-badge {
+  font-size: 11px; font-weight: 700; color: var(--primary);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+
 /* Due diligence checklist */
 .liked-checklist {
   display: flex;

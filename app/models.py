@@ -103,6 +103,17 @@ class ListingCache(Base):
     fetched_at = Column(DateTime, default=datetime.utcnow)
 
 
+class SharingConnection(Base):
+    __tablename__ = "sharing_connections"
+
+    id           = Column(Integer, primary_key=True)
+    from_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    to_user_id   = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    status       = Column(String, default="pending")  # pending | accepted | declined
+    created_at   = Column(DateTime, default=datetime.utcnow)
+    responded_at = Column(DateTime, nullable=True)
+
+
 class LikedListing(Base):
     __tablename__ = "liked_listings"
 
