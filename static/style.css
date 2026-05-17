@@ -403,6 +403,7 @@ a:hover { text-decoration: underline; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.nb-ch-short { display: none; }
 .nb-row-sub { border-bottom: none; padding-top: 0; }
 .nb-label { color: var(--text-muted); }
 .nb-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
@@ -595,9 +596,12 @@ a:hover { text-decoration: underline; }
   .nb-glance-kpi { padding: 9px 10px; }
   .nb-row { grid-template-columns: 1fr 68px 68px 36px; font-size: 12px; }
   .nb-colheader { grid-template-columns: 1fr 68px 68px 36px; }
-  .nb-colheader-b, .nb-colheader-w { font-size: 10px; }
+  /* Show short "buurt"/"wijk" labels instead of full names */
+  .nb-ch-full { display: none; }
+  .nb-ch-short { display: inline; font-size: 10px; }
   .nb-sparse-row { grid-template-columns: 1fr 80px 80px; }
-  .nb-legend { gap: 3px 10px; font-size: 10px; }
+  .nb-legend { gap: 3px 8px; font-size: 10px; flex-wrap: wrap; }
+  .nb-legend-item { white-space: nowrap; }
   .nb-bar-group { padding: 6px 0 3px; }
 }
 
