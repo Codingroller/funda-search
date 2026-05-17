@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
 
     # Seed first admin from env vars (new installs only)
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(User))
+        result = await db.execute(select(User).limit(1))
         if result.scalar_one_or_none() is None and settings.admin_password:
             db.add(User(
                 username=settings.admin_username,
