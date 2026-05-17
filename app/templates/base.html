@@ -10,20 +10,17 @@
 <body>
   <nav class="nav">
     <a class="nav-brand" href="/">Funda Search</a>
-    <details class="nav-menu">
-      <summary class="nav-toggle" aria-label="Menu">&#9776;</summary>
-      <div class="nav-links">
-        <a href="/">Dashboard</a>
-        <a href="/settings">Settings</a>
-        {% if current_user is defined and current_user and current_user.is_admin %}
-        <a href="/admin">Admin</a>
-        {% endif %}
-        {% if current_user is defined and current_user %}
-        <span class="nav-username">{{ current_user.username }}</span>
-        {% endif %}
-        <a href="/logout">Logout</a>
-      </div>
-    </details>
+    <div class="nav-links">
+      <a href="/">Dashboard</a>
+      <a href="/settings">Settings</a>
+      {% if current_user is defined and current_user and current_user.is_admin %}
+      <a href="/admin">Admin</a>
+      {% endif %}
+      {% if current_user is defined and current_user %}
+      <span class="nav-username">{{ current_user.username }}</span>
+      {% endif %}
+      <a href="/logout">Logout</a>
+    </div>
   </nav>
   <main class="container">
     {% block content %}{% endblock %}

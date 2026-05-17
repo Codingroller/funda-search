@@ -38,9 +38,7 @@ a:hover { text-decoration: underline; }
   height: 52px;
 }
 .nav-brand { font-weight: 700; font-size: 17px; color: var(--text); }
-/* Desktop: toggle hidden, links always visible */
-.nav-toggle { display: none; }
-.nav-menu .nav-links { display: flex; gap: 20px; font-size: 14px; align-items: center; }
+.nav-links { display: flex; gap: 20px; font-size: 14px; align-items: center; }
 .nav-links a { color: var(--text-muted); }
 .nav-links a:hover { color: var(--text); text-decoration: none; }
 .nav-username { font-size: 13px; color: var(--text-muted); font-weight: 500; }
@@ -528,48 +526,9 @@ a:hover { text-decoration: underline; }
 /* ── Mobile (≤ 640 px) ─────────────────────────────────────────────── */
 @media (max-width: 640px) {
 
-  /* ── Nav: hamburger menu ── */
-  .nav { position: relative; height: auto; padding: 10px 14px; }
-  .nav-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px; height: 44px;
-    font-size: 20px;
-    cursor: pointer;
-    list-style: none;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: #fff;
-    user-select: none;
-  }
-  .nav-toggle::-webkit-details-marker { display: none; }
-  .nav-menu .nav-links { display: none; }
-  .nav-menu[open] .nav-links {
-    display: flex;
-    flex-direction: column;
-    position: absolute;
-    top: calc(100% + 4px); right: 14px;
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: 0 4px 16px rgba(0,0,0,.12);
-    min-width: 180px;
-    z-index: 200;
-    gap: 0;
-  }
-  .nav-menu[open] .nav-links a,
-  .nav-menu[open] .nav-links .nav-username {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border);
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    color: var(--text);
-    font-size: 14px;
-  }
-  .nav-menu[open] .nav-links a:last-child { border-bottom: none; }
-  .nav-menu[open] .nav-links .nav-username { color: var(--text-muted); font-size: 12px; }
+  /* ── Nav: compact wrap on mobile ── */
+  .nav { flex-wrap: wrap; height: auto; padding: 10px 16px; gap: 6px; }
+  .nav-links { gap: 16px; font-size: 14px; }
 
   /* ── Container + safe area ── */
   .container { padding: 16px 16px calc(48px + env(safe-area-inset-bottom, 0px)); }
