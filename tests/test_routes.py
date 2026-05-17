@@ -145,13 +145,13 @@ async def test_settings_unauthenticated_redirects(anon):
 async def test_dashboard_renders(authed):
     r = await authed.get("/")
     assert r.status_code == 200
-    assert b"Saved Queries" in r.content
+    assert b"Saved Searches" in r.content
 
 
 async def test_new_query_form_renders(authed):
     r = await authed.get("/queries/new")
     assert r.status_code == 200
-    assert b"New Query" in r.content
+    assert b"New Search" in r.content
 
 
 async def test_settings_renders(authed):

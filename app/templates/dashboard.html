@@ -2,8 +2,8 @@
 {% block title %}Dashboard — Funda Search{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>Saved Queries</h1>
-  <a href="/queries/new" class="btn btn-primary">+ New Query</a>
+  <h1>Saved Searches</h1>
+  <a href="/queries/new" class="btn btn-primary">+ New Search</a>
 </div>
 
 {% if queries %}
@@ -28,7 +28,7 @@
 </div>
 {% else %}
 <div class="empty-state">
-  <p>No saved queries yet. <a href="/queries/new">Create your first query</a> to start getting alerts.</p>
+  <p>No saved searches yet. <a href="/queries/new">Create your first search</a> to start getting alerts.</p>
 </div>
 {% endif %}
 {% endblock %}

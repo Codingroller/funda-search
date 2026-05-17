@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{% if query %}Edit{% else %}New{% endif %} Query — Funda Search{% endblock %}
+{% block title %}{% if query %}Edit{% else %}New{% endif %} Search — Funda Search{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>{% if query %}Edit "{{ query.name }}"{% else %}New Query{% endif %}</h1>
+  <h1>{% if query %}Edit "{{ query.name }}"{% else %}New Search{% endif %}</h1>
 </div>
 
 <form
@@ -169,7 +169,7 @@
       <label class="checkbox-label">
         <input type="checkbox" name="enabled_val" value="1"
                {% if query is none or query.enabled %}checked{% endif %}>
-        Enable this query immediately
+        Enable this search immediately
       </label>
     </div>
   </div>
@@ -177,7 +177,7 @@
   <div class="form-actions">
     <a href="/" class="btn">Cancel</a>
     <button type="submit" class="btn btn-primary">
-      {% if query %}Save changes{% else %}Create query{% endif %}
+      {% if query %}Save changes{% else %}Create search{% endif %}
     </button>
   </div>
 </form>
