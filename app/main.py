@@ -37,17 +37,6 @@ async def _run_migrations(conn) -> None:
     await conn.execute(text(
         "UPDATE saved_queries SET user_id = (SELECT id FROM users LIMIT 1) WHERE user_id IS NULL"
     ))
-    # Remove CBS cache rows that were written in the old PDOK OGC format
-    # (field names like 'aantal_inwoners') rather than CBS OData measure codes
-    # ('T001036'). They produce empty detail pages so must be re-fetched.
-    for tbl in ("cbs_buurt", "cbs_wijk"):
-        try:
-            await conn.execute(text(
-                f"DELETE FROM {tbl} WHERE json_extract(properties_json, '$.aantal_inwoners') IS NOT NULL"
-            ))
-        except Exception:
-            pass
-
     # No explicit commit — engine.begin() context manager commits on exit
 
 
