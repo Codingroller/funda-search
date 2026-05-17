@@ -57,13 +57,11 @@ async def cache_photo(photo_url: str) -> str | None:
 def cache_hero_sync(photo_url: str) -> str | None:
     """Download the hero photo and cache the raw bytes without reprocessing.
 
-    Saves the original JPEG bytes from the CDN directly so there is zero
-    quality loss from double-compression. Upgrades _klein → _groot URLs
-    to get the larger source variant, falling back to the original if
-    _groot returns a non-200.
+    pyfunda's client.listing() returns bare CDN URLs (no size suffix) which
+    are already full-resolution (equivalent to _xxxl, ~770 KB). Writing raw
+    bytes preserves that quality exactly — no PIL decode/re-encode loss.
     """
-    hero_url = photo_url.replace("_klein.jpg", "_groot.jpg")
-    url_hash = hashlib.sha256(hero_url.encode()).hexdigest()[:20]
+    url_hash = hashlib.sha256(photo_url.encode()).hexdigest()[:20]
     filename = f"h_{url_hash}.jpg"
     local_path = _images_dir() / filename
 
@@ -72,12 +70,9 @@ def cache_hero_sync(photo_url: str) -> str | None:
 
     try:
         with httpx.Client(timeout=20, follow_redirects=True) as client:
-            resp = client.get(hero_url)
-            if resp.status_code != 200 and hero_url != photo_url:
-                resp = client.get(photo_url)
+            resp = client.get(photo_url)
             resp.raise_for_status()
 
-        # Write raw bytes — no PIL reprocessing, no quality loss
         local_path.write_bytes(resp.content)
         return f"/img/{filename}"
     except Exception:
