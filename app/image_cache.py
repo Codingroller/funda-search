@@ -55,10 +55,12 @@ async def cache_photo(photo_url: str) -> str | None:
 
 
 def cache_hero_sync(photo_url: str) -> str | None:
-    """Download the hero photo at full quality (max 1200 px wide, no crop).
+    """Download the hero photo and cache the raw bytes without reprocessing.
 
-    Upgrades _klein CDN URLs to _groot for a larger source image.
-    Cached separately from thumbnails using a 'h_' filename prefix.
+    Saves the original JPEG bytes from the CDN directly so there is zero
+    quality loss from double-compression. Upgrades _klein → _groot URLs
+    to get the larger source variant, falling back to the original if
+    _groot returns a non-200.
     """
     hero_url = photo_url.replace("_klein.jpg", "_groot.jpg")
     url_hash = hashlib.sha256(hero_url.encode()).hexdigest()[:20]
@@ -72,15 +74,11 @@ def cache_hero_sync(photo_url: str) -> str | None:
         with httpx.Client(timeout=20, follow_redirects=True) as client:
             resp = client.get(hero_url)
             if resp.status_code != 200 and hero_url != photo_url:
-                resp = client.get(photo_url)  # fall back to original URL
+                resp = client.get(photo_url)
             resp.raise_for_status()
 
-        img = Image.open(io.BytesIO(resp.content)).convert("RGB")
-        max_w = 1200
-        if img.width > max_w:
-            new_h = int(img.height * max_w / img.width)
-            img = img.resize((max_w, new_h), Image.LANCZOS)
-        img.save(local_path, "JPEG", quality=85, optimize=True)
+        # Write raw bytes — no PIL reprocessing, no quality loss
+        local_path.write_bytes(resp.content)
         return f"/img/{filename}"
     except Exception:
         return None
