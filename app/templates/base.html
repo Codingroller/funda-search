@@ -25,6 +25,22 @@
   <main class="container">
     {% block content %}{% endblock %}
   </main>
+  <div id="detail-spinner" class="spinner-overlay" style="display:none">
+    <div class="spinner-ring"></div>
+    <p class="spinner-text">Getting house data…</p>
+  </div>
+  <script>
+  (function () {
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('.listing-details-link')) {
+        document.getElementById('detail-spinner').style.display = 'flex';
+      }
+    });
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) document.getElementById('detail-spinner').style.display = 'none';
+    });
+  })();
+  </script>
   <footer class="footer">
     <small>
       Funda Search &mdash;
