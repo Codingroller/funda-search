@@ -41,14 +41,14 @@
     {% if listing.energy_label %}<span class="energy-label label-{{ listing.energy_label | replace('+','p') }}" style="font-size:13px;padding:3px 8px">{{ listing.energy_label }}</span>{% endif %}
     {% if listing.construction_year %}<span class="detail-tag">Built {{ listing.construction_year }}</span>{% endif %}
     {% if listing.object_type %}<span class="detail-tag">{{ listing.object_type | capitalize }}</span>{% endif %}
+    <button
+      class="like-btn like-btn-lg{% if is_liked %} liked{% endif %}"
+      hx-post="/listings/{{ listing.global_id }}/like"
+      hx-target="this"
+      hx-swap="outerHTML"
+      title="{% if is_liked %}Remove from liked{% else %}Save to liked{% endif %}"
+    >{{ '♥' if is_liked else '♡' }}</button>
   </div>
-  <button
-    class="like-btn like-btn-lg{% if is_liked %} liked{% endif %}"
-    hx-post="/listings/{{ listing.global_id }}/like"
-    hx-target="this"
-    hx-swap="outerHTML"
-    title="{% if is_liked %}Remove from liked{% else %}Save to liked{% endif %}"
-  >{{ '♥' if is_liked else '♡' }}</button>
 </div>
 
 {# ── Photo grid ── #}

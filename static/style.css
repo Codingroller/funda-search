@@ -262,7 +262,7 @@ a:hover { text-decoration: underline; }
 }
 .like-btn:hover { color: #ef4444; transform: scale(1.2); }
 .like-btn.liked { color: #ef4444; }
-.like-btn-lg { font-size: 24px; padding: 4px 6px; align-self: center; }
+.like-btn-lg { font-size: 22px; padding: 3px 6px; }
 
 /* Liked page */
 .liked-grid {
