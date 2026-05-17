@@ -1,4 +1,5 @@
 import json
+from urllib.parse import quote
 from fastapi.templating import Jinja2Templates
 
 templates = Jinja2Templates(directory="app/templates")
@@ -22,3 +23,4 @@ def _format_price(value):
 
 templates.env.filters["cbs_value"] = _cbs_value
 templates.env.filters["format_price"] = _format_price
+templates.env.filters["url_quote"] = lambda s: quote(str(s), safe="")

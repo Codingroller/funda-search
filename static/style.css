@@ -617,6 +617,26 @@ a:hover { text-decoration: underline; }
 /* Misc */
 .text-muted { color: var(--text-muted); }
 .small { font-size: 12px; }
+.mobile-only { display: none; }
+
+/* WhatsApp share button */
+.btn-whatsapp {
+  display: none;           /* desktop: hidden */
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 16px;
+  background: #25d366;
+  color: #fff;
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  margin-bottom: 14px;
+  transition: background .15s;
+}
+.btn-whatsapp:hover { background: #1ebe5d; text-decoration: none; color: #fff; }
 
 /* ── Mobile (≤ 640 px) ─────────────────────────────────────────────── */
 @media (max-width: 640px) {
@@ -711,6 +731,10 @@ a:hover { text-decoration: underline; }
   .listing-photo { width: 100%; height: auto; aspect-ratio: 4/3; border-radius: 0; }
   .listing-info { padding: 12px 12px 8px; }
   .listing-card-foot { text-align: center; padding: 8px 12px; }
+
+  /* ── WhatsApp share + mobile-only utility ── */
+  .btn-whatsapp { display: flex; }
+  .mobile-only { display: flex; }
 
   /* ── Detail page ── */
   .detail-hero { margin: 0; border-radius: 0; border-left: none; border-right: none; }
