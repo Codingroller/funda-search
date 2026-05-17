@@ -749,14 +749,15 @@ a:hover { text-decoration: underline; }
   align-items: center;
   justify-content: center;
   width: 36px; height: 36px;
-  color: #25d366;
+  background: #25d366;
+  color: #fff;
   border-radius: 50%;
-  border: 1.5px solid #25d366;
+  border: none;
   text-decoration: none;
   flex-shrink: 0;
   transition: background .15s;
 }
-.wa-icon-btn:hover { background: #f0fdf4; text-decoration: none; }
+.wa-icon-btn:hover { background: #1ebe5d; text-decoration: none; }
 
 /* ── Mobile (≤ 640 px) ─────────────────────────────────────────────── */
 @media (max-width: 640px) {

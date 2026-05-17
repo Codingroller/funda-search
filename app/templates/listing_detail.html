@@ -44,7 +44,8 @@
   </div>
   <div class="detail-meta-icons">
     {# WhatsApp icon — mobile only, left of heart #}
-    {% set _share_text = (listing.title or '') ~ ' — ' ~ (listing.price or '') ~ '\n' ~ (listing.url or '') %}
+    {% set _app_url = request.base_url ~ 'listings/' ~ listing.global_id %}
+    {% set _share_text = (listing.title or '') ~ ' — ' ~ (listing.price or '') ~ '\n' ~ _app_url %}
     <a class="wa-icon-btn mobile-only"
        href="https://wa.me/?text={{ _share_text | url_quote }}"
        target="_blank" rel="noopener" title="Share via WhatsApp">
