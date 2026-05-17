@@ -110,4 +110,7 @@ class LikedListing(Base):
     global_id = Column(String, primary_key=True)
     payload_json = Column(Text, default="{}")   # card data snapshot
     notes = Column(Text, default="")
+    agent_contacted = Column(Boolean, default=False, nullable=False)
+    viewing_date = Column(String, nullable=True)   # ISO "YYYY-MM-DD"
+    bid_amount = Column(Integer, nullable=True)    # whole euros
     liked_at = Column(DateTime, default=datetime.utcnow)

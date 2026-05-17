@@ -57,14 +57,73 @@
       >♥ Remove</button>
     </div>
 
-    {# Notes / due diligence #}
+    {# Due diligence checklist #}
+    <div class="liked-checklist">
+      {# Hidden inputs ensure unchecked/empty fields are always posted #}
+      <input type="hidden" name="agent_contacted" value="0">
+      <input type="hidden" name="viewing_date" value="">
+      <input type="hidden" name="bid_amount" value="">
+
+      <div class="liked-check-item">
+        <span class="liked-check-label">Agent contacted</span>
+        <label class="liked-check-checkbox-label">
+          <input
+            type="checkbox"
+            name="agent_contacted"
+            value="1"
+            {% if item.agent_contacted %}checked{% endif %}
+            hx-post="/liked/{{ item.global_id }}/checklist"
+            hx-include="closest .liked-checklist"
+            hx-trigger="change"
+            hx-swap="none"
+          >
+          <span>Contacted</span>
+        </label>
+      </div>
+
+      <div class="liked-check-item">
+        <label class="liked-check-label" for="viewing-{{ item.global_id }}">Viewing planned</label>
+        <input
+          type="date"
+          id="viewing-{{ item.global_id }}"
+          name="viewing_date"
+          value="{{ item.viewing_date }}"
+          hx-post="/liked/{{ item.global_id }}/checklist"
+          hx-include="closest .liked-checklist"
+          hx-trigger="change delay:300ms"
+          hx-swap="none"
+        >
+      </div>
+
+      <div class="liked-check-item">
+        <label class="liked-check-label" for="bid-{{ item.global_id }}">Bid placed</label>
+        <div class="liked-bid-wrap">
+          <span class="liked-bid-prefix">€</span>
+          <input
+            type="number"
+            id="bid-{{ item.global_id }}"
+            name="bid_amount"
+            value="{{ item.bid_amount or '' }}"
+            placeholder="0"
+            min="0"
+            step="1000"
+            hx-post="/liked/{{ item.global_id }}/checklist"
+            hx-include="closest .liked-checklist"
+            hx-trigger="change delay:600ms"
+            hx-swap="none"
+          >
+        </div>
+      </div>
+    </div>
+
+    {# Notes #}
     <div class="liked-notes">
-      <label class="liked-notes-label" for="notes-{{ item.global_id }}">Notes &amp; due diligence</label>
+      <label class="liked-notes-label" for="notes-{{ item.global_id }}">Notes</label>
       <textarea
         id="notes-{{ item.global_id }}"
         class="liked-notes-area"
         name="notes"
-        placeholder="Add notes, tasks, questions…"
+        placeholder="Add notes, questions, observations…"
         hx-post="/liked/{{ item.global_id }}/notes"
         hx-trigger="change delay:600ms, keyup changed delay:1000ms"
         hx-include="this"

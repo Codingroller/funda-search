@@ -91,6 +91,34 @@ async def save_notes(
     return HTMLResponse("")
 
 
+@router.post("/liked/{global_id}/checklist", response_class=HTMLResponse)
+async def save_checklist(
+    request: Request,
+    global_id: str,
+    current_user: User = Depends(require_auth),
+):
+    form_data = await request.form()
+    agent_contacted = form_data.get("agent_contacted", "0") == "1"
+    viewing_date = form_data.get("viewing_date", "").strip() or None
+    bid_raw = form_data.get("bid_amount", "").strip()
+    bid_amount = int(bid_raw) if bid_raw.isdigit() else None
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(LikedListing).where(
+                LikedListing.user_id == current_user.id,
+                LikedListing.global_id == global_id,
+            )
+        )
+        row = result.scalar_one_or_none()
+        if row:
+            row.agent_contacted = agent_contacted
+            row.viewing_date = viewing_date
+            row.bid_amount = bid_amount
+            await db.commit()
+    return HTMLResponse("")
+
+
 @router.get("/liked", response_class=HTMLResponse)
 async def liked_page(request: Request, current_user: User = Depends(require_auth)):
     async with AsyncSessionLocal() as db:
@@ -105,6 +133,9 @@ async def liked_page(request: Request, current_user: User = Depends(require_auth
         {
             "listing": json.loads(r.payload_json),
             "notes": r.notes or "",
+            "agent_contacted": r.agent_contacted,
+            "viewing_date": r.viewing_date or "",
+            "bid_amount": r.bid_amount,
             "liked_at": r.liked_at,
             "global_id": r.global_id,
         }

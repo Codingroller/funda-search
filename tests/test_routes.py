@@ -637,3 +637,53 @@ async def test_signup_password_mismatch(authed):
         })
         assert r2.status_code == 400
         assert b"do not match" in r2.content
+
+
+# --- liked checklist ---
+
+async def test_liked_checklist_saves_fields(authed):
+    from app.models import LikedListing
+    from sqlalchemy import select
+
+    # First like a listing
+    await authed.post("/listings/55667788/like")
+
+    # Save checklist fields
+    r = await authed.post("/liked/55667788/checklist", data={
+        "agent_contacted": "1",
+        "viewing_date": "2026-06-01",
+        "bid_amount": "450000",
+    })
+    assert r.status_code == 200
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(LikedListing).where(LikedListing.global_id == "55667788")
+        )
+        row = result.scalar_one_or_none()
+
+    assert row is not None
+    assert row.agent_contacted is True
+    assert row.viewing_date == "2026-06-01"
+    assert row.bid_amount == 450000
+
+
+async def test_liked_checklist_unchecked_clears_agent(authed):
+    """When checkbox is unchecked the hidden input sends '0' — agent_contacted goes False."""
+    from app.models import LikedListing
+    from sqlalchemy import select
+
+    await authed.post("/listings/55667789/like")
+    # Set it true first
+    await authed.post("/liked/55667789/checklist", data={"agent_contacted": "1", "viewing_date": "", "bid_amount": ""})
+    # Now uncheck (only hidden "0" is sent)
+    await authed.post("/liked/55667789/checklist", data={"agent_contacted": "0", "viewing_date": "", "bid_amount": ""})
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(LikedListing).where(LikedListing.global_id == "55667789")
+        )
+        row = result.scalar_one_or_none()
+
+    assert row is not None
+    assert row.agent_contacted is False

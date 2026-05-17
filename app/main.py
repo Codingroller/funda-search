@@ -24,6 +24,9 @@ async def _run_migrations(conn) -> None:
         "ALTER TABLE users ADD COLUMN username TEXT",
         "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 1",
         "ALTER TABLE saved_queries ADD COLUMN user_id INTEGER REFERENCES users(id) ON DELETE CASCADE",
+        "ALTER TABLE liked_listings ADD COLUMN agent_contacted INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE liked_listings ADD COLUMN viewing_date TEXT",
+        "ALTER TABLE liked_listings ADD COLUMN bid_amount INTEGER",
     ]:
         try:
             await conn.execute(text(stmt))
