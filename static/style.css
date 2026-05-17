@@ -237,8 +237,7 @@ a:hover { text-decoration: underline; }
 .listing-meta { display: flex; gap: 8px; font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 .listing-card-foot {
   border-top: 1px solid var(--border);
-  padding: 7px 12px;
-  text-align: right;
+  padding: 5px 10px 5px 6px;
 }
 .listing-funda-link {
   font-size: 12px;
@@ -246,6 +245,102 @@ a:hover { text-decoration: underline; }
   text-decoration: none;
 }
 .listing-funda-link:hover { color: var(--primary); text-decoration: underline; }
+
+/* Heart / like button */
+.like-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: var(--text-muted);
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color .15s, transform .15s;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.like-btn:hover { color: #ef4444; transform: scale(1.2); }
+.like-btn.liked { color: #ef4444; }
+.like-btn-lg { font-size: 24px; padding: 4px 6px; align-self: center; }
+
+/* Liked page */
+.liked-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+.liked-item {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.liked-card-link {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  padding: 10px;
+  text-decoration: none;
+  color: inherit;
+}
+.liked-card-link:hover { background: var(--bg); text-decoration: none; }
+.liked-photo {
+  width: 120px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: calc(var(--radius) - 2px);
+  flex-shrink: 0;
+}
+.liked-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.liked-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.liked-notes { padding: 10px 12px 12px; border-top: 1px solid var(--border); }
+.liked-notes-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.liked-notes-area {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-family: var(--font);
+  resize: vertical;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+.liked-notes-area:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+
+/* card footer layout with heart + funda link */
+.listing-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (max-width: 640px) {
+  .liked-grid { grid-template-columns: 1fr; }
+  .liked-card-link { flex-direction: column; padding: 0; gap: 0; }
+  .liked-photo { width: 100%; height: auto; aspect-ratio: 16/9; border-radius: 0; }
+  .liked-info { padding: 10px; }
+}
 
 /* Run-now spinner */
 .spinner-overlay {

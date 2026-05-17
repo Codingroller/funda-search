@@ -101,3 +101,13 @@ class ListingCache(Base):
     global_id = Column(String, primary_key=True)
     payload_json = Column(Text, nullable=False)
     fetched_at = Column(DateTime, default=datetime.utcnow)
+
+
+class LikedListing(Base):
+    __tablename__ = "liked_listings"
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    global_id = Column(String, primary_key=True)
+    payload_json = Column(Text, default="{}")   # card data snapshot
+    notes = Column(Text, default="")
+    liked_at = Column(DateTime, default=datetime.utcnow)

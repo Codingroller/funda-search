@@ -1,0 +1,8 @@
+<button
+  class="like-btn{% if is_liked %} liked{% endif %}"
+  hx-post="/listings/{{ global_id }}/like"
+  hx-target="this"
+  hx-swap="outerHTML"
+  title="{% if is_liked %}Remove from liked{% else %}Save to liked{% endif %}"
+  aria-label="{% if is_liked %}Unlike{% else %}Like{% endif %}"
+>{{ '♥' if is_liked else '♡' }}</button>

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Liked houses — Funda Search{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1>Liked houses</h1>
+  <span class="text-muted" style="font-size:14px">{{ items | length }} saved</span>
+</div>
+
+{% if not items %}
+<div class="empty-state">
+  <p>No liked houses yet.</p>
+  <p class="small">Click ♡ on any listing card or detail page to save it here.</p>
+</div>
+{% else %}
+<div class="liked-grid">
+  {% for item in items %}
+  {% set listing = item.listing %}
+  <div class="liked-item">
+    {# Card body #}
+    <a href="/listings/{{ item.global_id }}" class="liked-card-link">
+      {% if listing.photo_url %}
+      <img src="{{ listing.photo_url }}" alt="{{ listing.title }}" class="liked-photo" loading="lazy">
+      {% endif %}
+      <div class="liked-info">
+        <div class="listing-price-row" style="margin-bottom:4px">
+          <div>
+            <span class="listing-price">{{ listing.price or '—' }}</span>
+            {% if listing.price_per_m2 %}<div class="listing-ppm2">{{ listing.price_per_m2 }}</div>{% endif %}
+          </div>
+          {% if listing.energy_label %}
+          <span class="energy-label label-{{ listing.energy_label | replace('+','p') }}">{{ listing.energy_label }}</span>
+          {% endif %}
+        </div>
+        <div class="listing-title" style="font-size:14px;font-weight:600">{{ listing.title or item.global_id }}</div>
+        {% if listing.city or listing.postcode %}
+        <div class="text-muted small">{{ listing.postcode or '' }}{% if listing.postcode and listing.city %} {% endif %}{{ listing.city or '' }}</div>
+        {% endif %}
+        <div class="listing-meta">
+          {% if listing.living_area %}<span>{{ listing.living_area }} m²</span>{% endif %}
+          {% if listing.rooms_count %}<span>{{ listing.rooms_count }} rooms</span>{% endif %}
+        </div>
+      </div>
+    </a>
+
+    {# Actions row #}
+    <div class="liked-actions">
+      <a href="{{ listing.url }}" target="_blank" rel="noopener" class="listing-funda-link" style="font-size:13px">Open on Funda ↗</a>
+      <span class="text-muted small">Saved {{ item.liked_at.strftime('%d %b') }}</span>
+      <button
+        class="like-btn liked"
+        hx-post="/listings/{{ item.global_id }}/like"
+        hx-confirm="Remove from liked?"
+        hx-target="closest .liked-item"
+        hx-swap="outerHTML"
+        title="Remove from liked"
+      >♥ Remove</button>
+    </div>
+
+    {# Notes / due diligence #}
+    <div class="liked-notes">
+      <label class="liked-notes-label" for="notes-{{ item.global_id }}">Notes &amp; due diligence</label>
+      <textarea
+        id="notes-{{ item.global_id }}"
+        class="liked-notes-area"
+        name="notes"
+        placeholder="Add notes, tasks, questions…"
+        hx-post="/liked/{{ item.global_id }}/notes"
+        hx-trigger="change delay:600ms, keyup changed delay:1000ms"
+        hx-include="this"
+        hx-swap="none"
+      >{{ item.notes }}</textarea>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

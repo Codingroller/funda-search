@@ -12,7 +12,7 @@ from app.cbs_view import build_view
 from app.db import AsyncSessionLocal
 from app.funda_client import autocomplete as funda_autocomplete
 from app.funda_client import get_listing_detail, search_listings
-from app.models import RunLog, SavedQuery, SeenListing, User
+from app.models import LikedListing, RunLog, SavedQuery, SeenListing, User
 from app.scheduler import add_query_job, remove_query_job, run_query_job
 from app.templates_env import templates
 
@@ -264,9 +264,13 @@ async def query_detail(request: Request, query_id: int, current_user: User = Dep
             .limit(20)
         )
         runs = result.scalars().all()
+        liked_result = await db.execute(
+            select(LikedListing.global_id).where(LikedListing.user_id == current_user.id)
+        )
+        liked_ids = {row[0] for row in liked_result.all()}
     return templates.TemplateResponse(
         request, "query_detail.html",
-        {"query": query, "runs": runs, "current_user": current_user},
+        {"query": query, "runs": runs, "current_user": current_user, "liked_ids": liked_ids},
     )
 
 
@@ -302,7 +306,16 @@ async def listing_detail_page(
 
     view = build_view(cbs) if cbs else None
     back_url = request.headers.get("referer") or "/"
+    async with AsyncSessionLocal() as db:
+        liked_result = await db.execute(
+            select(LikedListing).where(
+                LikedListing.user_id == current_user.id,
+                LikedListing.global_id == global_id,
+            )
+        )
+        is_liked = liked_result.scalar_one_or_none() is not None
     return templates.TemplateResponse(
         request, "listing_detail.html",
-        {"listing": listing, "cbs": cbs, "view": view, "back_url": back_url, "current_user": current_user},
+        {"listing": listing, "cbs": cbs, "view": view, "back_url": back_url,
+         "current_user": current_user, "is_liked": is_liked},
     )

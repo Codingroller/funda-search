@@ -1,3 +1,4 @@
+{% set _is_liked = is_liked if is_liked is defined else (listing.global_id in liked_ids if liked_ids is defined else false) %}
 <div class="listing-card">
   <a href="/listings/{{ listing.global_id }}" class="listing-card-body">
     {% if listing.photo_url %}
@@ -21,6 +22,13 @@
     </div>
   </a>
   <div class="listing-card-foot">
+    <button
+      class="like-btn{% if _is_liked %} liked{% endif %}"
+      hx-post="/listings/{{ listing.global_id }}/like"
+      hx-target="this"
+      hx-swap="outerHTML"
+      title="{% if _is_liked %}Remove from liked{% else %}Save to liked{% endif %}"
+    >{{ '♥' if _is_liked else '♡' }}</button>
     <a href="{{ listing.url }}" target="_blank" rel="noopener" class="listing-funda-link">Open on Funda ↗</a>
   </div>
 </div>
