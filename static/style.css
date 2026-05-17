@@ -219,10 +219,10 @@ a:hover { text-decoration: underline; }
 }
 .listing-price-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: flex-start;
-  gap: 8px;
-  width: 100%;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .listing-photo {
   width: 160px;
