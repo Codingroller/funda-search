@@ -262,7 +262,7 @@ a:hover { text-decoration: underline; }
 }
 .like-btn:hover { color: #ef4444; transform: scale(1.2); }
 .like-btn.liked { color: #ef4444; }
-.like-btn-lg { font-size: 22px; padding: 3px 6px; }
+.like-btn-lg { font-size: 22px; padding: 3px 6px; align-self: center; }
 
 /* Liked page */
 .liked-grid {
@@ -737,24 +737,26 @@ a:hover { text-decoration: underline; }
 .small { font-size: 12px; }
 .mobile-only { display: none; }
 
-/* WhatsApp share button */
-.btn-whatsapp {
-  display: none;           /* desktop: hidden */
+/* WhatsApp icon button (detail page, left of heart) */
+.detail-meta-icons {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wa-icon-btn {
+  display: none;           /* hidden on desktop */
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  width: 100%;
-  padding: 11px 16px;
-  background: #25d366;
-  color: #fff;
-  border-radius: var(--radius);
-  font-size: 15px;
-  font-weight: 600;
+  width: 36px; height: 36px;
+  color: #25d366;
+  border-radius: 50%;
+  border: 1.5px solid #25d366;
   text-decoration: none;
-  margin-bottom: 14px;
+  flex-shrink: 0;
   transition: background .15s;
 }
-.btn-whatsapp:hover { background: #1ebe5d; text-decoration: none; color: #fff; }
+.wa-icon-btn:hover { background: #f0fdf4; text-decoration: none; }
 
 /* ── Mobile (≤ 640 px) ─────────────────────────────────────────────── */
 @media (max-width: 640px) {
@@ -850,8 +852,8 @@ a:hover { text-decoration: underline; }
   .listing-info { padding: 12px 12px 8px; }
   .listing-card-foot { text-align: center; padding: 8px 12px; }
 
-  /* ── WhatsApp share + mobile-only utility ── */
-  .btn-whatsapp { display: flex; }
+  /* ── WhatsApp icon + mobile-only utility ── */
+  .wa-icon-btn { display: flex; }
   .mobile-only { display: flex; }
 
   /* ── Detail page ── */
