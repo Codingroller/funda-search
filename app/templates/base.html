@@ -37,7 +37,9 @@
   }
   (function () {
     document.addEventListener('click', function (e) {
-      if (e.target.closest('.listing-details-link')) showSpinner('Getting house data…');
+      if (e.target.closest('.listing-details-link') || e.target.closest('.listing-photo-link')) {
+        showSpinner('Getting house data…');
+      }
     });
     window.addEventListener('pageshow', function (e) {
       if (e.persisted) document.getElementById('detail-spinner').style.display = 'none';

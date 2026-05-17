@@ -17,7 +17,7 @@
     {% endif %}
   </div>
   {% if listing.photo_url %}
-  <a href="{{ listing.url }}" target="_blank" class="listing-photo-link">
+  <a href="/listings/{{ listing.global_id }}" class="listing-photo-link">
     <img src="{{ listing.photo_url }}" alt="{{ listing.title }}" class="listing-photo" loading="lazy">
   </a>
   {% endif %}
