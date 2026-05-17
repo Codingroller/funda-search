@@ -359,7 +359,16 @@ a:hover { text-decoration: underline; }
 }
 .share-username-input:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
 .share-error { color: var(--danger); font-size: 13px; margin-bottom: 8px; }
-.share-pending-sent { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.share-pending-sent {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.share-pending-sent .share-label { margin-bottom: 0; }
 
 /* Owner badge on merged liked cards */
 .owner-badge-bar { padding: 4px 12px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; }
