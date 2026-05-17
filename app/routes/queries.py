@@ -152,8 +152,9 @@ async def query_create(
 
     if enabled:
         add_query_job(query_id, interval_minutes)
+        await run_query_job(query_id)  # first run immediately → results visible on redirect
 
-    return RedirectResponse("/", status_code=302)
+    return RedirectResponse(f"/queries/{query_id}", status_code=302)
 
 
 @router.get("/queries/{query_id}/edit", response_class=HTMLResponse)

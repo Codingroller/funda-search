@@ -30,11 +30,14 @@
     <p class="spinner-text">Getting house data…</p>
   </div>
   <script>
+  function showSpinner(text) {
+    var s = document.getElementById('detail-spinner');
+    if (text) s.querySelector('.spinner-text').textContent = text;
+    s.style.display = 'flex';
+  }
   (function () {
     document.addEventListener('click', function (e) {
-      if (e.target.closest('.listing-details-link')) {
-        document.getElementById('detail-spinner').style.display = 'flex';
-      }
+      if (e.target.closest('.listing-details-link')) showSpinner('Getting house data…');
     });
     window.addEventListener('pageshow', function (e) {
       if (e.persisted) document.getElementById('detail-spinner').style.display = 'none';

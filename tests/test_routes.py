@@ -333,9 +333,11 @@ async def test_listing_detail_bu_identifier_skips_geocoding(authed, monkeypatch)
 
 # --- query CRUD ---
 
-async def test_query_create_redirects_to_dashboard(authed, monkeypatch):
+async def test_query_create_redirects_to_detail(authed, monkeypatch):
     import app.routes.queries as qroutes
     monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
+    async def _noop(*a, **kw): pass
+    monkeypatch.setattr(qroutes, "run_query_job", _noop)
 
     r = await authed.post("/queries", data={
         "name": "My Test Query",
@@ -343,9 +345,10 @@ async def test_query_create_redirects_to_dashboard(authed, monkeypatch):
         "category": "buy",
         "sort": "newest",
         "interval_minutes": "60",
+        "enabled_val": "1",
     })
     assert r.status_code == 302
-    assert r.headers["location"] == "/"
+    assert r.headers["location"].startswith("/queries/")
 
 
 async def test_query_create_persists_to_db(authed, monkeypatch):

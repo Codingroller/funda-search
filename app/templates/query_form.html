@@ -197,5 +197,11 @@
       document.getElementById('autocomplete-results').innerHTML = '';
     }
   });
+  {% if not query %}
+  // Show spinner while the first search runs after creation
+  document.querySelector('form').addEventListener('submit', function() {
+    showSpinner('Searching for listings…');
+  });
+  {% endif %}
 </script>
 {% endblock %}
