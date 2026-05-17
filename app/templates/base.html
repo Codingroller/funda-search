@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{% block title %}Funda Search{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" defer></script>
@@ -10,21 +10,25 @@
 <body>
   <nav class="nav">
     <a class="nav-brand" href="/">Funda Search</a>
-    <div class="nav-links">
-      <a href="/">Dashboard</a>
-      <a href="/settings">Settings</a>
-      {% if current_user is defined and current_user and current_user.is_admin %}
-      <a href="/admin">Admin</a>
-      {% endif %}
-      {% if current_user is defined and current_user %}
-      <span class="nav-username">{{ current_user.username }}</span>
-      {% endif %}
-      <a href="/logout">Logout</a>
-    </div>
+    <details class="nav-menu">
+      <summary class="nav-toggle" aria-label="Menu">&#9776;</summary>
+      <div class="nav-links">
+        <a href="/">Dashboard</a>
+        <a href="/settings">Settings</a>
+        {% if current_user is defined and current_user and current_user.is_admin %}
+        <a href="/admin">Admin</a>
+        {% endif %}
+        {% if current_user is defined and current_user %}
+        <span class="nav-username">{{ current_user.username }}</span>
+        {% endif %}
+        <a href="/logout">Logout</a>
+      </div>
+    </details>
   </nav>
   <main class="container">
     {% block content %}{% endblock %}
   </main>
+
   <div id="detail-spinner" class="spinner-overlay" style="display:none">
     <div class="spinner-ring"></div>
     <p class="spinner-text">Getting house data…</p>
@@ -37,15 +41,14 @@
   }
   (function () {
     document.addEventListener('click', function (e) {
-      if (e.target.closest('.listing-details-link') || e.target.closest('.listing-photo-link')) {
-        showSpinner('Getting house data…');
-      }
+      if (e.target.closest('.listing-card-body')) showSpinner('Getting house data…');
     });
     window.addEventListener('pageshow', function (e) {
       if (e.persisted) document.getElementById('detail-spinner').style.display = 'none';
     });
   })();
   </script>
+
   <footer class="footer">
     <small>
       Funda Search &mdash;
