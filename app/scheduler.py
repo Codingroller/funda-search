@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from datetime import datetime, timedelta
@@ -10,6 +11,42 @@ from app.models import SavedQuery, SeenListing, RunLog, User
 
 log = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone="Europe/Amsterdam")
+
+
+async def _precache_new_listings(listings: list[dict]) -> None:
+    """Background task: pre-warm listing_cache and CBS caches for new results.
+
+    Processes one listing at a time with a 2 s pause between each so
+    user-triggered detail page requests always get priority:
+    - The 2 s sleep yields the event loop each iteration.
+    - Sequential processing means at most 1 background thread-pool slot
+      is occupied at once, leaving the other 3 free for user requests.
+    - `get_listing_detail` checks ListingCache first (fast DB lookup),
+      so already-cached items cost nothing.
+    """
+    from app.cbs_client import get_buurtcode_from_coords, get_neighbourhood_stats
+    from app.funda_client import get_listing_detail
+
+    for listing in listings:
+        global_id = listing.get("global_id")
+        if not global_id:
+            continue
+        try:
+            detail = await get_listing_detail(global_id)
+
+            # Warm CBS cache using the most efficient lookup available
+            identifier = detail.get("neighbourhood_identifier")
+            if (not identifier or not str(identifier).upper().startswith("BU")) \
+                    and detail.get("lat") and detail.get("lon"):
+                identifier = await get_buurtcode_from_coords(detail["lat"], detail["lon"])
+            if identifier and str(identifier).upper().startswith("BU"):
+                await get_neighbourhood_stats(identifier)
+
+        except Exception:
+            pass
+
+        # Yield to the event loop; user requests run during this gap
+        await asyncio.sleep(2)
 
 
 async def run_query_job(query_id: int) -> None:
@@ -93,6 +130,12 @@ async def run_query_job(query_id: int) -> None:
             query.consecutive_errors = 0
 
             await db.commit()
+
+            # Warm listing + CBS caches in the background so detail pages
+            # load instantly for the user. Fire-and-forget: does not block
+            # the scheduler job and always yields priority to user requests.
+            if new_listings:
+                asyncio.create_task(_precache_new_listings(new_listings[:30]))
 
         except Exception as exc:
             await db.rollback()
