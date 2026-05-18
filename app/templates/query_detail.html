@@ -36,56 +36,65 @@
 
 <h2>Recent searches</h2>
 {% if runs %}
-<div class="table-wrap">
-  <table class="table table-runs">
-    <thead>
-      <tr>
-        <th>Started</th>
-        <th>Duration</th>
-        <th>Status</th>
-        <th>Results</th>
-        <th>New</th>
-        <th>Error</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for run in runs %}
-      <tr>
-        <td>{{ run.started_at.strftime('%d %b %H:%M:%S') }}</td>
-        <td>
-          {% if run.finished_at %}
-            {{ ((run.finished_at - run.started_at).total_seconds() | round(1)) }}s
-          {% else %}—{% endif %}
-        </td>
-        <td>
-          {% if run.status == 'ok' %}
-            <span class="badge badge-ok">OK</span>
-          {% else %}
-            <span class="badge badge-error">Error</span>
+  <p class="run-last-search" style="margin: 0 0 1rem">
+    Last search: {{ runs[0].started_at.strftime('%d-%m-%Y %H:%M') }}
+  </p>
+  <div class="table-wrap">
+    <table class="table table-runs">
+      <thead>
+        <tr>
+          <th>Started</th>
+          <th>Duration</th>
+          <th>Status</th>
+          <th>Results</th>
+          <th>New</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs if run.new_count > 0 or run.status != 'ok' %}
+        <tr>
+          <td>{{ run.started_at.strftime('%d %b %H:%M:%S') }}</td>
+          <td>
+            {% if run.finished_at %}
+              {{ ((run.finished_at - run.started_at).total_seconds() | round(1)) }}s
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if run.status == 'ok' %}
+              <span class="badge badge-ok">OK</span>
+            {% else %}
+              <span class="badge badge-error">Error</span>
+            {% endif %}
+          </td>
+          <td>{{ run.result_count }}</td>
+          <td>{{ run.new_count }}</td>
+          <td class="text-muted small">{{ run.error_message or '' }}</td>
+        </tr>
+        {% if run.new_listings_json %}
+          {% set listings = run.new_listings_json | fromjson %}
+          {% if listings %}
+          <tr class="listings-row">
+            <td colspan="6">
+              <div class="listings-grid">
+                {% for listing in listings %}
+                  {% include "partials/listing_card.html" %}
+                {% endfor %}
+              </div>
+            </td>
+          </tr>
           {% endif %}
-        </td>
-        <td>{{ run.result_count }}</td>
-        <td>{{ run.new_count }}</td>
-        <td class="text-muted small">{{ run.error_message or '' }}</td>
-      </tr>
-      {% if run.new_listings_json %}
-        {% set listings = run.new_listings_json | fromjson %}
-        {% if listings %}
-        <tr class="listings-row">
-          <td colspan="6">
-            <div class="listings-grid">
-              {% for listing in listings %}
-                {% include "partials/listing_card.html" %}
-              {% endfor %}
-            </div>
+        {% endif %}
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-muted" style="padding: 1rem; text-align: center">
+            No new listings found in the last {{ runs | length }} search{{ 'es' if runs | length != 1 else '' }}.
           </td>
         </tr>
-        {% endif %}
-      {% endif %}
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% else %}
 <p class="text-muted">No searches yet. Hit "Search now" to test this search.</p>
 {% endif %}
