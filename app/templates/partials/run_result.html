@@ -1,13 +1,13 @@
 {% if run %}
   {% if run.status == 'ok' %}
     {% if run.new_count > 0 %}
-      <span class="badge badge-ok" title="{{ run.finished_at }}">
-        +{{ run.new_count }} new / {{ run.result_count }} total
+      <span class="pill success" title="{{ run.finished_at }}">
+        <span class="pill-dot"></span>+{{ run.new_count }} new
       </span>
     {% else %}
       <span class="run-last-search">last search: {{ run.finished_at.strftime('%d-%m-%Y %H:%M') }}</span>
     {% endif %}
   {% else %}
-    <span class="badge badge-error" title="{{ run.error_message }}">Error</span>
+    <span class="pill danger" title="{{ run.error_message }}"><span class="pill-dot"></span>Error</span>
   {% endif %}
 {% endif %}

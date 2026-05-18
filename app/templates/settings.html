@@ -13,59 +13,68 @@
 {% endif %}
 
 <div class="settings-grid">
-  <section class="card">
-    <h2>Push Notifications</h2>
-
-    <p id="push-status-msg" style="display:none"></p>
-
-    <div id="push-ios-notice" style="display:none">
-      <div class="alert alert-ok" style="margin-bottom:0.75rem">
-        <strong>iPhone / iPad:</strong> Open the Share menu in Safari and tap
-        <em>Add to Home Screen</em>. Then open the installed app and tap
-        <em>Enable on this device</em> below.<br>
-        Requires iOS 16.4 or later.
-      </div>
+  <div class="card">
+    <div class="card-header">
+      <h3>Push Notifications</h3>
     </div>
+    <div class="card-body">
 
-    <div id="push-unsupported" style="display:none">
-      <p>Push notifications are not supported in this browser.</p>
+      <div id="push-ios-notice" style="display:none">
+        <div class="ds-alert info" style="margin-bottom:0">
+          <strong>iPhone / iPad:</strong> Open the Share menu in Safari and tap
+          <em>Add to Home Screen</em>. Then open the installed app and tap
+          <em>Enable on this device</em> below.<br>
+          Requires iOS 16.4 or later.
+        </div>
+      </div>
+
+      <div id="push-unsupported" style="display:none">
+        <p class="text-muted">Push notifications are not supported in this browser.</p>
+      </div>
+
+      <div id="push-disabled" style="display:none">
+        <p class="text-muted" style="margin-bottom:12px">This device is not subscribed to push notifications.</p>
+        <button class="btn btn-primary" onclick="enablePush()">Enable on this device</button>
+      </div>
+
+      <div id="push-enabled" style="display:none">
+        <p style="margin-bottom:12px">
+          This device is subscribed.
+          <span class="text-muted">Total subscriptions: <strong>{{ sub_count }}</strong></span>
+        </p>
+        <div class="btn-row">
+          <form method="post" action="/settings/test-notification">
+            <button type="submit" class="btn btn-primary">Send test notification</button>
+          </form>
+          <button class="btn btn-danger" onclick="disablePush()">Disable on this device</button>
+        </div>
+      </div>
+
     </div>
+  </div>
 
-    <div id="push-disabled" style="display:none">
-      <p>This device is not subscribed to push notifications.</p>
-      <button class="btn btn-primary" onclick="enablePush()">Enable on this device</button>
+  <div class="card">
+    <div class="card-header">
+      <h3>Change Password</h3>
     </div>
-
-    <div id="push-enabled" style="display:none">
-      <p>This device is subscribed. Total subscriptions for your account: <strong>{{ sub_count }}</strong>.</p>
-      <div class="btn-row">
-        <form method="post" action="/settings/test-notification">
-          <button type="submit" class="btn btn-primary">Send test notification</button>
-        </form>
-        <button class="btn btn-danger" onclick="disablePush()">Disable on this device</button>
-      </div>
+    <div class="card-body">
+      <form method="post" action="/settings/password" class="form-inline">
+        <div class="field">
+          <label for="current_password">Current password</label>
+          <input type="password" id="current_password" name="current_password" required>
+        </div>
+        <div class="field">
+          <label for="new_password">New password</label>
+          <input type="password" id="new_password" name="new_password" required minlength="8">
+        </div>
+        <div class="field">
+          <label for="confirm_password">Confirm new password</label>
+          <input type="password" id="confirm_password" name="confirm_password" required minlength="8">
+        </div>
+        <button type="submit" class="btn btn-primary">Update password</button>
+      </form>
     </div>
-
-  </section>
-
-  <section class="card">
-    <h2>Change Password</h2>
-    <form method="post" action="/settings/password" class="form-inline">
-      <div class="field">
-        <label for="current_password">Current password</label>
-        <input type="password" id="current_password" name="current_password" required>
-      </div>
-      <div class="field">
-        <label for="new_password">New password</label>
-        <input type="password" id="new_password" name="new_password" required minlength="8">
-      </div>
-      <div class="field">
-        <label for="confirm_password">Confirm new password</label>
-        <input type="password" id="confirm_password" name="confirm_password" required minlength="8">
-      </div>
-      <button type="submit" class="btn btn-primary">Update password</button>
-    </form>
-  </section>
+  </div>
 </div>
 
 <script>

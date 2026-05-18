@@ -4,20 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{% block title %}Funda Search{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/design-system.css">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="manifest" href="/static/manifest.webmanifest">
-  <meta name="theme-color" content="#0b6cab">
+  <meta name="theme-color" content="#1c2333">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Funda">
   <meta name="mobile-web-app-capable" content="yes">
+  {% block head %}{% endblock %}
   <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" defer></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/sw.js', { scope: '/' })
           .catch(function (e) { console.warn('SW registration failed', e); });
-        // Clear the app icon badge whenever the user opens the app
         navigator.serviceWorker.ready.then(function (reg) {
           if (reg.active) reg.active.postMessage({ type: 'CLEAR_BADGE' });
         }).catch(function () {});
@@ -26,21 +30,25 @@
   </script>
 </head>
 <body>
-  <nav class="nav">
-    <a class="nav-brand" href="/">Funda Search</a>
-    <div class="nav-links">
-      <a href="/">Dashboard</a>
-      <a href="/liked">Liked</a>
-      <a href="/settings">Settings</a>
+  <header class="topbar">
+    <a class="topbar-brand" href="/">Funda Search</a>
+    <nav class="topbar-nav">
+      {% set path = request.url.path %}
+      <a href="/" class="topbar-nav-link {% if path == '/' %}is-active{% endif %}">Dashboard</a>
+      <a href="/liked" class="topbar-nav-link {% if path.startswith('/liked') %}is-active{% endif %}">Liked</a>
+      <a href="/settings" class="topbar-nav-link {% if path.startswith('/settings') %}is-active{% endif %}">Settings</a>
       {% if current_user is defined and current_user and current_user.is_admin %}
-      <a href="/admin">Admin</a>
+      <a href="/admin" class="topbar-nav-link {% if path.startswith('/admin') %}is-active{% endif %}">Admin</a>
       {% endif %}
+    </nav>
+    <div class="topbar-end">
       {% if current_user is defined and current_user %}
-      <span class="nav-username">{{ current_user.username }}</span>
+      <span class="topbar-user">{{ current_user.username }}</span>
       {% endif %}
-      <a href="/logout">Logout</a>
+      <a href="/logout" class="btn btn-ghost btn-sm">Logout</a>
     </div>
-  </nav>
+  </header>
+
   <div id="install-banner" style="display:none" role="banner" aria-label="Install app">
     <span id="install-ios-text">
       <strong>Install as app:</strong> tap the Share icon then <em>Add to Home Screen</em>
@@ -93,7 +101,6 @@
       return;
     }
 
-    // Android / desktop: listen for the browser's install prompt
     window.addEventListener('beforeinstallprompt', function (e) {
       e.preventDefault();
       window._installEvent = e;

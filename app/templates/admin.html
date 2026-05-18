@@ -2,40 +2,43 @@
 {% block title %}Admin — Funda Search{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>Admin panel</h1>
+  <h1>Admin</h1>
 </div>
 
-{# ── Invite link ── #}
-<div class="card" style="margin-bottom:24px">
-  <h2>Invite new user</h2>
-  <p class="text-muted" style="font-size:14px;margin-bottom:16px">
-    Generate a single-use link (valid 7 days). Share it directly — anyone with the link can create an account.
-  </p>
-  <form method="post" action="/admin/invite">
-    <button type="submit" class="btn btn-primary">Generate invite link</button>
-  </form>
-  {% if invite_url %}
-  <div style="margin-top:16px">
-    <div class="alert alert-ok">Invite link generated — share this once:</div>
-    <code class="topic-code" style="margin-top:8px;display:block;word-break:break-all">{{ invite_url }}</code>
+<div class="card" style="margin-bottom:20px">
+  <div class="card-header">
+    <h3>Invite new user</h3>
   </div>
-  {% endif %}
-
-  {% if invite_tokens %}
-  <div style="margin-top:16px">
-    <p class="text-muted small">Active unused invites (expire in 7 days):</p>
-    {% for t in invite_tokens %}
-    <div class="topic-code small" style="margin-top:6px">/signup/{{ t.token[:16] }}… — created {{ t.created_at.strftime('%d %b %H:%M') }}</div>
-    {% endfor %}
+  <div class="card-body">
+    <p class="text-muted" style="margin-bottom:16px;font-size:13.5px">
+      Generate a single-use link valid for 7 days. Share it directly — anyone with the link can create an account.
+    </p>
+    <form method="post" action="/admin/invite">
+      <button type="submit" class="btn btn-primary">Generate invite link</button>
+    </form>
+    {% if invite_url %}
+    <div style="margin-top:16px">
+      <div class="alert alert-ok">Invite link generated — share this once:</div>
+      <code class="topic-code" style="margin-top:8px;display:block;word-break:break-all">{{ invite_url }}</code>
+    </div>
+    {% endif %}
+    {% if invite_tokens %}
+    <div style="margin-top:16px">
+      <p class="text-muted small">Active unused invites (expire in 7 days):</p>
+      {% for t in invite_tokens %}
+      <div class="topic-code small" style="margin-top:6px">/signup/{{ t.token[:16] }}… — created {{ t.created_at.strftime('%d %b %H:%M') }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
-  {% endif %}
 </div>
 
-{# ── User list ── #}
 <div class="card">
-  <h2>Users</h2>
-  <div class="table-wrap" style="margin-top:12px">
-    <table class="table">
+  <div class="card-header">
+    <h3>Users</h3>
+  </div>
+  <div class="card-body" style="padding:0">
+    <table class="data-table">
       <thead>
         <tr>
           <th>Username</th>
@@ -51,24 +54,32 @@
         <tr>
           <td>
             {{ u.username }}
-            {% if u.id == current_user.id %}<span class="badge badge-none" style="margin-left:6px">you</span>{% endif %}
+            {% if u.id == current_user.id %}
+              <span class="pill" style="margin-left:6px">you</span>
+            {% endif %}
           </td>
           <td>
-            {% if u.is_admin %}<span class="badge badge-ok">Admin</span>{% else %}<span class="badge badge-none">User</span>{% endif %}
+            {% if u.is_admin %}
+              <span class="pill success"><span class="pill-dot"></span>Admin</span>
+            {% else %}
+              <span class="pill">User</span>
+            {% endif %}
           </td>
           <td>{{ row.query_count }}</td>
           <td>{{ u.created_at.strftime('%d %b %Y') }}</td>
-          <td class="actions">
+          <td>
             {% if u.id != current_user.id %}
-            <form method="post" action="/admin/users/{{ u.id }}/toggle-admin" style="display:inline">
-              <button type="submit" class="btn btn-sm">
-                {% if u.is_admin %}Demote{% else %}Make admin{% endif %}
-              </button>
-            </form>
-            <form method="post" action="/admin/users/{{ u.id }}/delete" style="display:inline"
-                  onsubmit="return confirm('Delete {{ u.username }} and all their data?')">
-              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-            </form>
+            <div style="display:flex;gap:6px">
+              <form method="post" action="/admin/users/{{ u.id }}/toggle-admin">
+                <button type="submit" class="btn btn-sm">
+                  {% if u.is_admin %}Demote{% else %}Make admin{% endif %}
+                </button>
+              </form>
+              <form method="post" action="/admin/users/{{ u.id }}/delete"
+                    onsubmit="return confirm('Delete {{ u.username }} and all their data?')">
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+              </form>
+            </div>
             {% endif %}
           </td>
         </tr>

@@ -14,11 +14,11 @@
   </td>
   <td data-label="Status">
     {% if query.last_run_status == 'ok' %}
-      <span class="badge badge-ok">OK</span>
+      <span class="pill success"><span class="pill-dot"></span>OK</span>
     {% elif query.last_run_status == 'error' %}
-      <span class="badge badge-error">Error</span>
+      <span class="pill danger"><span class="pill-dot"></span>Error</span>
     {% else %}
-      <span class="badge badge-none">—</span>
+      <span class="pill">—</span>
     {% endif %}
   </td>
   <td data-label="Enabled">

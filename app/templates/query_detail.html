@@ -13,8 +13,8 @@
         {% if minutes == query.interval_minutes %}{{ label }}{% endif %}
       {% endfor %}
       &mdash;
-      <span class="badge {% if query.enabled %}badge-ok{% else %}badge-none{% endif %}">
-        {% if query.enabled %}Enabled{% else %}Disabled{% endif %}
+      <span class="pill {% if query.enabled %}success{% endif %}">
+        <span class="pill-dot"></span>{% if query.enabled %}Enabled{% else %}Disabled{% endif %}
       </span>
     </p>
   </div>
@@ -34,13 +34,14 @@
   <p class="spinner-text">Fetching listings…</p>
 </div>
 
-<h2>Recent searches</h2>
 {% if runs %}
-  <p class="run-last-search" style="margin: 0 0 1rem">
-    Last search: {{ runs[0].started_at.strftime('%d-%m-%Y %H:%M') }}
-  </p>
-  <div class="table-wrap">
-    <table class="table table-runs">
+<div class="card">
+  <div class="card-header" style="justify-content:space-between">
+    <h3>Recent searches</h3>
+    <span class="run-last-search">Last search: {{ runs[0].started_at.strftime('%d-%m-%Y %H:%M') }}</span>
+  </div>
+  <div class="card-body" style="padding:0">
+  <table class="data-table table-runs">
       <thead>
         <tr>
           <th>Started</th>
@@ -62,9 +63,9 @@
           </td>
           <td>
             {% if run.status == 'ok' %}
-              <span class="badge badge-ok">OK</span>
+              <span class="pill success"><span class="pill-dot"></span>OK</span>
             {% else %}
-              <span class="badge badge-error">Error</span>
+              <span class="pill danger"><span class="pill-dot"></span>Error</span>
             {% endif %}
           </td>
           <td>{{ run.result_count }}</td>
@@ -94,6 +95,7 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
   </div>
 {% else %}
 <p class="text-muted">No searches yet. Hit "Search now" to test this search.</p>

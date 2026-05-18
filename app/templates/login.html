@@ -4,11 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login — Funda Search</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/design-system.css">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body class="login-page">
   <div class="login-card">
     <h1>Funda Search</h1>
+    <p class="login-subtitle">Sign in to your account</p>
     {% if error %}
       <div class="alert alert-error">{{ error }}</div>
     {% endif %}
@@ -17,11 +22,11 @@
         <label for="username">Username</label>
         <input type="text" id="username" name="username" autofocus required autocomplete="username">
       </div>
-      <div class="field">
+      <div class="field" style="margin-bottom: 20px">
         <label for="password">Password</label>
         <input type="password" id="password" name="password" required autocomplete="current-password">
       </div>
-      <button type="submit" class="btn btn-primary btn-full">Login</button>
+      <button type="submit" class="btn btn-primary btn-full">Sign in</button>
     </form>
   </div>
 </body>
