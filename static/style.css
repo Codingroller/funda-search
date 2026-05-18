@@ -909,3 +909,38 @@ a:hover { text-decoration: underline; }
   /* Glance: 2 per row */
   .nb-glance { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Install banner ── */
+#install-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  background: #0b6cab;
+  color: #fff;
+  font-size: 0.875rem;
+  flex-wrap: wrap;
+}
+#install-banner span { flex: 1; }
+#install-banner .btn-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  opacity: 0.8;
+  line-height: 1;
+}
+#install-banner .btn-close:hover { opacity: 1; }
+#install-banner .btn.btn-sm {
+  padding: 0.2rem 0.65rem;
+  font-size: 0.8rem;
+  background: #fff;
+  color: #0b6cab;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}

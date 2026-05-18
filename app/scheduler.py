@@ -84,7 +84,7 @@ async def run_query_job(query_id: int) -> None:
             user = await db.get(User, query.user_id)
 
             if user and new_listings:
-                from app.notifier import send_ntfy
+                from app.notifier import notify_user
 
                 for listing in new_listings:
                     title = " - ".join(
@@ -103,15 +103,16 @@ async def run_query_job(query_id: int) -> None:
                     body = " • ".join(p for p in parts if p)
 
                     try:
-                        await send_ntfy(
-                            topic=user.ntfy_topic,
-                            title=title[:250],
-                            message=body,
-                            click_url=listing.get("url"),
-                            photo_url=listing.get("photo_url"),
+                        await notify_user(
+                            user.id,
+                            title=title[:120],
+                            body=body,
+                            url=listing.get("url"),
+                            image=listing.get("photo_url"),
+                            tag=str(listing.get("global_id", "")),
                         )
                     except Exception as notify_err:
-                        log.warning("ntfy failed for listing %s: %s", listing.get("global_id"), notify_err)
+                        log.warning("push failed for listing %s: %s", listing.get("global_id"), notify_err)
 
             db.add(
                 RunLog(

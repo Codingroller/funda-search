@@ -1,4 +1,3 @@
-import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -27,19 +26,32 @@ async def _run_migrations(conn) -> None:
         "ALTER TABLE liked_listings ADD COLUMN agent_contacted INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE liked_listings ADD COLUMN viewing_date TEXT",
         "ALTER TABLE liked_listings ADD COLUMN bid_amount INTEGER",
+        (
+            "CREATE TABLE IF NOT EXISTS push_subscriptions ("
+            "id INTEGER PRIMARY KEY,"
+            "user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+            "endpoint TEXT NOT NULL UNIQUE,"
+            "p256dh TEXT NOT NULL,"
+            "auth TEXT NOT NULL,"
+            "user_agent TEXT,"
+            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+        ),
+        "CREATE INDEX IF NOT EXISTS ix_push_subscriptions_user_id ON push_subscriptions(user_id)",
     ]:
         try:
             await conn.execute(text(stmt))
         except Exception:
             pass  # column already exists
 
-    # Backfill existing single-user data
-    await conn.execute(text(
-        "UPDATE users SET username = :u WHERE username IS NULL"
-    ), {"u": settings.admin_username})
-    await conn.execute(text(
-        "UPDATE saved_queries SET user_id = (SELECT id FROM users LIMIT 1) WHERE user_id IS NULL"
-    ))
+    # Backfill existing single-user data (silently ignored on fresh installs)
+    for stmt, params in [
+        ("UPDATE users SET username = :u WHERE username IS NULL", {"u": settings.admin_username}),
+        ("UPDATE saved_queries SET user_id = (SELECT id FROM users LIMIT 1) WHERE user_id IS NULL", {}),
+    ]:
+        try:
+            await conn.execute(text(stmt), params)
+        except Exception:
+            pass
     # No explicit commit — engine.begin() context manager commits on exit
 
 
@@ -62,7 +74,6 @@ async def lifespan(app: FastAPI):
             db.add(User(
                 username=settings.admin_username,
                 password_hash=hash_password(settings.admin_password),
-                ntfy_topic=secrets.token_urlsafe(16),
                 is_admin=True,
             ))
             await db.commit()
@@ -76,7 +87,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Funda Search", lifespan=lifespan)
-app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, https_only=True)
+app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, https_only=settings.https_only)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
@@ -88,6 +99,15 @@ async def unauth_handler(request: Request, _exc: UnauthenticatedException):
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+
+
+@app.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    return FileResponse(
+        "static/sw.js",
+        media_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"},
+    )
 
 
 @app.get("/img/{filename}")
@@ -107,6 +127,7 @@ from app.routes import settings as settings_routes  # noqa: E402
 from app.routes import admin as admin_routes      # noqa: E402
 from app.routes import signup as signup_routes    # noqa: E402
 from app.routes import liked as liked_routes      # noqa: E402
+from app.routes import push as push_routes        # noqa: E402
 
 app.include_router(auth_routes.router)
 app.include_router(queries_routes.router)
@@ -114,3 +135,4 @@ app.include_router(settings_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(signup_routes.router)
 app.include_router(liked_routes.router)
+app.include_router(push_routes.router)

@@ -15,27 +15,37 @@
 <div class="settings-grid">
   <section class="card">
     <h2>Push Notifications</h2>
-    {% if user %}
-      <p>Your ntfy topic:</p>
-      <code class="topic-code">{{ user.ntfy_topic }}</code>
 
-      <p class="mt">
-        Subscribe in the ntfy app:<br>
-        <a href="{{ ntfy_base_url }}/{{ user.ntfy_topic }}" target="_blank">
-          {{ ntfy_base_url }}/{{ user.ntfy_topic }}
-        </a>
-      </p>
+    <p id="push-status-msg" style="display:none"></p>
 
-      <div class="btn-row mt">
+    <div id="push-ios-notice" style="display:none">
+      <div class="alert alert-ok" style="margin-bottom:0.75rem">
+        <strong>iPhone / iPad:</strong> Open the Share menu in Safari and tap
+        <em>Add to Home Screen</em>. Then open the installed app and tap
+        <em>Enable on this device</em> below.<br>
+        Requires iOS 16.4 or later.
+      </div>
+    </div>
+
+    <div id="push-unsupported" style="display:none">
+      <p>Push notifications are not supported in this browser.</p>
+    </div>
+
+    <div id="push-disabled" style="display:none">
+      <p>This device is not subscribed to push notifications.</p>
+      <button class="btn btn-primary" onclick="enablePush()">Enable on this device</button>
+    </div>
+
+    <div id="push-enabled" style="display:none">
+      <p>This device is subscribed. Total subscriptions for your account: <strong>{{ sub_count }}</strong>.</p>
+      <div class="btn-row">
         <form method="post" action="/settings/test-notification">
           <button type="submit" class="btn btn-primary">Send test notification</button>
         </form>
-        <form method="post" action="/settings/ntfy-topic"
-              onsubmit="return confirm('Regenerate topic? You will need to re-subscribe in the ntfy app.')">
-          <button type="submit" class="btn btn-danger">Regenerate topic</button>
-        </form>
+        <button class="btn btn-danger" onclick="disablePush()">Disable on this device</button>
       </div>
-    {% endif %}
+    </div>
+
   </section>
 
   <section class="card">
@@ -57,4 +67,78 @@
     </form>
   </section>
 </div>
+
+<script>
+function urlBase64ToUint8Array(b64) {
+  var pad = '='.repeat((4 - b64.length % 4) % 4);
+  var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  var arr = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+async function enablePush() {
+  var reg = await navigator.serviceWorker.ready;
+  var perm = await Notification.requestPermission();
+  if (perm !== 'granted') {
+    alert('Please allow notifications in your browser settings and try again.');
+    return;
+  }
+  var keyText = await fetch('/push/vapid-public-key').then(function (r) { return r.text(); });
+  var key = urlBase64ToUint8Array(keyText.trim());
+  var sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+  var j = sub.toJSON();
+  await fetch('/push/subscribe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth })
+  });
+  location.reload();
+}
+
+async function disablePush() {
+  var reg = await navigator.serviceWorker.ready;
+  var sub = await reg.pushManager.getSubscription();
+  if (sub) {
+    var j = sub.toJSON();
+    await fetch('/push/unsubscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth })
+    });
+    await sub.unsubscribe();
+  }
+  location.reload();
+}
+
+(async function () {
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isStandalone = window.navigator.standalone === true;
+
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (isIOS && !isStandalone) {
+      document.getElementById('push-ios-notice').style.display = 'block';
+    } else {
+      document.getElementById('push-unsupported').style.display = 'block';
+    }
+    return;
+  }
+
+  if (isIOS && !isStandalone) {
+    document.getElementById('push-ios-notice').style.display = 'block';
+  }
+
+  try {
+    var reg = await navigator.serviceWorker.ready;
+    var sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      document.getElementById('push-enabled').style.display = 'block';
+    } else {
+      document.getElementById('push-disabled').style.display = 'block';
+    }
+  } catch (e) {
+    document.getElementById('push-disabled').style.display = 'block';
+  }
+})();
+</script>
 {% endblock %}

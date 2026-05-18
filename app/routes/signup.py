@@ -1,4 +1,3 @@
-import secrets
 from datetime import datetime
 
 from fastapi import APIRouter, Form, Request
@@ -62,7 +61,6 @@ async def signup_post(
         user = User(
             username=username,
             password_hash=hash_password(password),
-            ntfy_topic=secrets.token_urlsafe(16),
             is_admin=False,
         )
         db.add(user)

@@ -31,7 +31,6 @@ async def _db():
             db.add(User(
                 username=_USERNAME,
                 password_hash=hash_password(_PASSWORD),
-                ntfy_topic="test-topic",
                 is_admin=True,
             ))
             await db.commit()
@@ -70,7 +69,6 @@ async def authed2():
             db.add(User(
                 username=_USERNAME2,
                 password_hash=hash_password(_PASSWORD),
-                ntfy_topic="test-topic-2",
                 is_admin=False,
             ))
             await db.commit()

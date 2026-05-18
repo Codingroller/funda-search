@@ -9,8 +9,21 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    ntfy_topic = Column(String, nullable=False)
+    ntfy_topic = Column(String, nullable=True, default="")  # orphaned — kept for existing DBs
     is_admin = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
+                     nullable=False, index=True)
+    endpoint = Column(String, nullable=False, unique=True)
+    p256dh = Column(String, nullable=False)
+    auth = Column(String, nullable=False)
+    user_agent = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

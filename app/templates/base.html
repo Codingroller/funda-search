@@ -5,7 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{% block title %}Funda Search{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <meta name="theme-color" content="#0b6cab">
+  <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Funda">
+  <meta name="mobile-web-app-capable" content="yes">
   <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
+          .catch(function (e) { console.warn('SW registration failed', e); });
+      });
+    }
+  </script>
 </head>
 <body>
   <nav class="nav">
@@ -23,6 +37,17 @@
       <a href="/logout">Logout</a>
     </div>
   </nav>
+  <div id="install-banner" style="display:none" role="banner" aria-label="Install app">
+    <span id="install-ios-text">
+      <strong>Install as app:</strong> tap the Share icon then <em>Add to Home Screen</em>
+    </span>
+    <span id="install-android-text" style="display:none">
+      <strong>Install as app</strong> for the best experience
+      <button class="btn btn-sm" id="install-android-btn" onclick="doInstall()">Install</button>
+    </span>
+    <button class="btn-close" onclick="dismissInstall()" aria-label="Dismiss">✕</button>
+  </div>
+
   <main class="container">
     {% block content %}{% endblock %}
   </main>
@@ -45,6 +70,47 @@
       if (e.persisted) document.getElementById('detail-spinner').style.display = 'none';
     });
   })();
+  </script>
+
+  <script>
+  (function () {
+    if (localStorage.getItem('install-dismissed')) return;
+    var isStandalone = window.navigator.standalone === true ||
+                       window.matchMedia('(display-mode: standalone)').matches;
+    if (isStandalone) return;
+
+    var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    var banner = document.getElementById('install-banner');
+
+    if (isIOS) {
+      document.getElementById('install-ios-text').style.display = 'inline';
+      document.getElementById('install-android-text').style.display = 'none';
+      banner.style.display = 'flex';
+      return;
+    }
+
+    // Android / desktop: listen for the browser's install prompt
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window._installEvent = e;
+      document.getElementById('install-ios-text').style.display = 'none';
+      document.getElementById('install-android-text').style.display = 'inline';
+      banner.style.display = 'flex';
+    });
+  })();
+
+  function doInstall() {
+    if (!window._installEvent) return;
+    window._installEvent.prompt();
+    window._installEvent.userChoice.then(function () {
+      document.getElementById('install-banner').style.display = 'none';
+    });
+  }
+
+  function dismissInstall() {
+    localStorage.setItem('install-dismissed', '1');
+    document.getElementById('install-banner').style.display = 'none';
+  }
   </script>
 
   <footer class="footer">

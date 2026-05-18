@@ -1,44 +1,82 @@
-import httpx
+import asyncio
+import json
+import logging
+from concurrent.futures import ThreadPoolExecutor
+
+from pywebpush import webpush, WebPushException
+from sqlalchemy import delete, select
+
 from app.config import settings
+from app.db import AsyncSessionLocal
+from app.models import PushSubscription
 
-_ASCII_MAP = str.maketrans({
-    '—': '-',   # em dash
-    '–': '-',   # en dash
-    '€': 'EUR', # €
-    '²': '2',   # ²
-    '•': '*',   # •
-    'é': 'e', 'ë': 'e', 'ê': 'e',  # é ë ê
-    'ö': 'o', 'ü': 'u', 'ä': 'a',  # ö ü ä
-    'ï': 'i', 'î': 'i',                  # ï î
-})
+log = logging.getLogger(__name__)
+_pool = ThreadPoolExecutor(max_workers=4)
 
 
-def _h(s: str) -> str:
-    """Make a string safe for HTTP headers (ASCII only)."""
-    return s.translate(_ASCII_MAP).encode('ascii', errors='ignore').decode()
+def _send_one(sub_info: dict, payload: str) -> int | None:
+    """Synchronous pywebpush call — run in ThreadPoolExecutor. Returns status code on failure."""
+    try:
+        webpush(
+            subscription_info=sub_info,
+            data=payload,
+            vapid_private_key=settings.vapid_private_key,
+            vapid_claims={"sub": settings.vapid_subject},
+            timeout=10,
+        )
+        return None
+    except WebPushException as exc:
+        status = getattr(exc.response, "status_code", None)
+        log.warning("push to %s... -> %s", sub_info["endpoint"][:60], status)
+        return status or 0
+    except Exception as exc:
+        log.warning("push error: %s", exc)
+        return 0
 
 
-async def send_ntfy(
-    topic: str,
+async def notify_user(
+    user_id: int,
     title: str,
-    message: str,
-    click_url: str | None = None,
-    photo_url: str | None = None,
-    priority: str = "default",
+    body: str,
+    url: str | None = None,
+    image: str | None = None,
+    tag: str | None = None,
 ) -> None:
-    url = f"{settings.ntfy_base_url.rstrip('/')}/{topic}"
-    headers: dict[str, str] = {
-        "X-Title": _h(title[:250]),
-        "X-Priority": priority,
-        "Content-Type": "text/plain; charset=utf-8",
-    }
-    if click_url:
-        headers["X-Click"] = _h(click_url)
-    if photo_url:
-        headers["X-Attach"] = _h(photo_url)
-    if settings.ntfy_token:
-        headers["Authorization"] = f"Bearer {settings.ntfy_token}"
+    if not settings.vapid_private_key or not settings.vapid_public_key:
+        log.warning("VAPID keys not configured — skipping push notification")
+        return
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.post(url, content=message.encode(), headers=headers)
-        response.raise_for_status()
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(
+            select(PushSubscription).where(PushSubscription.user_id == user_id)
+        )).scalars().all()
+
+    if not rows:
+        return
+
+    payload = json.dumps({
+        "title": title[:120],
+        "body": body[:240],
+        "url": url,
+        "image": image,
+        "tag": tag,
+    })
+
+    loop = asyncio.get_running_loop()
+    dead: list[str] = []
+
+    for sub in rows:
+        info = {
+            "endpoint": sub.endpoint,
+            "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+        }
+        status = await loop.run_in_executor(_pool, _send_one, info, payload)
+        if status in (404, 410):
+            dead.append(sub.endpoint)
+
+    if dead:
+        async with AsyncSessionLocal() as db:
+            await db.execute(
+                delete(PushSubscription).where(PushSubscription.endpoint.in_(dead))
+            )
+            await db.commit()
