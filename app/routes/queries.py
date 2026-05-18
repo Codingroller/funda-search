@@ -271,7 +271,6 @@ async def query_detail(request: Request, query_id: int, current_user: User = Dep
             select(RunLog)
             .where(RunLog.query_id == query_id)
             .order_by(RunLog.started_at.desc())
-            .limit(20)
         )
         runs = result.scalars().all()
         liked_result = await db.execute(
