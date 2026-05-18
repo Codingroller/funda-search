@@ -366,6 +366,7 @@ h2 { font-size: 16px; font-weight: 600; }
   object-fit: cover;
   border-radius: var(--r-sm);
   flex-shrink: 0;
+  align-self: center;
 }
 .liked-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .liked-actions {
