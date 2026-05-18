@@ -76,6 +76,7 @@ class RunLog(Base):
     result_count = Column(Integer, default=0)
     new_count = Column(Integer, default=0)
     new_listings_json = Column(Text, default="[]")
+    all_listings_json = Column(Text, default="[]")
     error_message = Column(Text, nullable=True)
 
 

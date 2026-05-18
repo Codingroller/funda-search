@@ -472,6 +472,20 @@ async def test_listing_card_contains_view_details_link(authed, monkeypatch):
         result = await db.execute(select(SavedQuery).where(SavedQuery.name == "Card Link Test"))
         query = result.scalar_one()
         now = datetime.utcnow()
+        listing = {
+            "global_id": "99887766",
+            "url": "https://funda.nl/1",
+            "title": "Teststraat 1",
+            "city": "Almere",
+            "price": "€ 300.000",
+            "price_per_m2": None,
+            "living_area": 80,
+            "rooms_count": 3,
+            "bedrooms": 2,
+            "energy_label": "B",
+            "photo_url": None,
+            "publication_date": None,
+        }
         db.add(RunLog(
             query_id=query.id,
             started_at=now,
@@ -479,20 +493,8 @@ async def test_listing_card_contains_view_details_link(authed, monkeypatch):
             status="ok",
             result_count=1,
             new_count=1,
-            new_listings_json=json.dumps([{
-                "global_id": "99887766",
-                "url": "https://funda.nl/1",
-                "title": "Teststraat 1",
-                "city": "Almere",
-                "price": "€ 300.000",
-                "price_per_m2": None,
-                "living_area": 80,
-                "rooms_count": 3,
-                "bedrooms": 2,
-                "energy_label": "B",
-                "photo_url": None,
-                "publication_date": None,
-            }]),
+            new_listings_json=json.dumps([listing]),
+            all_listings_json=json.dumps([listing]),
         ))
         await db.commit()
 

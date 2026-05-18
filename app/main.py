@@ -37,6 +37,7 @@ async def _run_migrations(conn) -> None:
             "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
         ),
         "CREATE INDEX IF NOT EXISTS ix_push_subscriptions_user_id ON push_subscriptions(user_id)",
+        "ALTER TABLE run_logs ADD COLUMN all_listings_json TEXT NOT NULL DEFAULT '[]'",
     ]:
         try:
             await conn.execute(text(stmt))

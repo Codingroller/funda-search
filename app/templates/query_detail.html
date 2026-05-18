@@ -71,19 +71,22 @@
           <td>{{ run.new_count }}</td>
           <td class="text-muted small">{{ run.error_message or '' }}</td>
         </tr>
-        {% if run.new_listings_json %}
-          {% set listings = run.new_listings_json | fromjson %}
-          {% if listings %}
-          <tr class="listings-row">
-            <td colspan="6">
-              <div class="listings-grid">
-                {% for listing in listings %}
+        {% set all_listings = run.all_listings_json | fromjson %}
+        {% set new_ids = run.new_listings_json | fromjson | map(attribute='global_id') | list %}
+        {% if all_listings %}
+        <tr class="listings-row">
+          <td colspan="6">
+            <div class="listings-grid">
+              {% for listing in all_listings %}
+                {% set is_new = listing.global_id in new_ids %}
+                <div class="listing-card-wrap{% if is_new %} listing-card-new{% endif %}">
+                  {% if is_new %}<span class="badge-new">New</span>{% endif %}
                   {% include "partials/listing_card.html" %}
-                {% endfor %}
-              </div>
-            </td>
-          </tr>
-          {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          </td>
+        </tr>
         {% endif %}
         {% else %}
         <tr>

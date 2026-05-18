@@ -123,6 +123,7 @@ async def run_query_job(query_id: int) -> None:
                     result_count=len(listings),
                     new_count=len(new_listings),
                     new_listings_json=json.dumps(new_listings[:30]),
+                    all_listings_json=json.dumps(listings[:30]),
                 )
             )
 
