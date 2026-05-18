@@ -1,5 +1,3 @@
 {% for s in suggestions %}
-  <div class="autocomplete-item" data-id="{{ s.id }}" data-label="{{ s.label }}">
-    {{ s.label }}
-  </div>
+  <div class="autocomplete-item" data-label="{{ s }}">{{ s }}</div>
 {% endfor %}

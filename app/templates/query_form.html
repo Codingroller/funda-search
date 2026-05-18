@@ -28,10 +28,9 @@
           placeholder="e.g. amsterdam, utrecht"
           autocomplete="off"
           hx-get="/autocomplete"
-          hx-trigger="keyup changed delay:350ms"
+          hx-trigger="keyup changed delay:300ms"
           hx-target="#autocomplete-results"
-          hx-vals='{"q": ""}'
-          hx-include="[name='location']"
+          hx-vals='js:{"location": event.target.value}'
         >
         <div id="autocomplete-results" class="autocomplete-dropdown"></div>
       </div>
@@ -182,12 +181,16 @@
       document.getElementById('autocomplete-results').innerHTML = '';
     }
   });
-  // Fill input when clicking a suggestion
+  // Fill input when clicking a suggestion (replaces only the last comma-separated segment)
   document.body.addEventListener('click', function(e) {
     const item = e.target.closest('.autocomplete-item');
     if (item) {
-      document.getElementById('location').value = item.dataset.label;
+      const input = document.getElementById('location');
+      const parts = input.value.split(',');
+      parts[parts.length - 1] = ' ' + item.dataset.label;
+      input.value = parts.join(',').replace(/^,\s*/, '');
       document.getElementById('autocomplete-results').innerHTML = '';
+      input.focus();
     }
   });
   {% if not query %}

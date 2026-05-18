@@ -10,7 +10,7 @@ from app.auth import require_auth
 from app.cbs_client import get_buurtcode_from_coords, get_neighbourhood_stats
 from app.cbs_view import build_view
 from app.db import AsyncSessionLocal
-from app.funda_client import autocomplete as funda_autocomplete
+from app.dutch_cities import search_cities
 from app.funda_client import get_listing_detail, search_listings
 from app.models import LikedListing, RunLog, SavedQuery, SeenListing, User
 from app.scheduler import add_query_job, remove_query_job, run_query_job
@@ -285,11 +285,13 @@ async def query_detail(request: Request, query_id: int, current_user: User = Dep
 
 @router.get("/autocomplete", response_class=HTMLResponse)
 async def autocomplete_endpoint(
-    request: Request, q: str = "", current_user: User = Depends(require_auth)
+    request: Request, location: str = "", current_user: User = Depends(require_auth)
 ):
+    # Complete only the last segment after a comma (supports "Amsterdam, Utr…")
+    q = location.split(",")[-1].strip()
     if len(q) < 2:
         return HTMLResponse("")
-    suggestions = await funda_autocomplete(q)
+    suggestions = search_cities(q)
     return templates.TemplateResponse(
         request, "partials/autocomplete.html", {"suggestions": suggestions},
     )
