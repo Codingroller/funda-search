@@ -764,11 +764,12 @@ h2 { font-size: 16px; font-weight: 600; }
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.55rem 1rem;
+  padding: 0.65rem 1rem;
   background: var(--text);
   color: #fff;
   font-size: 0.8125rem;
   flex-wrap: wrap;
+  line-height: 1.5;
 }
 #install-banner span { flex: 1; }
 #install-banner .btn-close {
@@ -777,12 +778,22 @@ h2 { font-size: 16px; font-weight: 600; }
   opacity: 0.7; line-height: 1;
 }
 #install-banner .btn-close:hover { opacity: 1; }
-#install-banner .btn.btn-sm {
+.ib-btn {
+  display: inline-flex; align-items: center; gap: 4px;
   padding: 0.2rem 0.65rem; font-size: 0.8rem;
   background: #fff; color: var(--text);
   border: none; border-radius: var(--r-sm);
   cursor: pointer; font-weight: 600; margin-left: 0.5rem;
+  min-height: auto;
 }
+.ib-icon {
+  display: inline-block; vertical-align: -0.2em;
+  width: 1em; height: 1em;
+  stroke: currentColor; fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  flex-shrink: 0;
+}
+.ib-btn .ib-icon { width: 0.9em; height: 0.9em; vertical-align: -0.15em; }
 
 /* ── Mobile (≤ 640 px) ── */
 @media (max-width: 640px) {
