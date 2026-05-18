@@ -30,7 +30,7 @@
           hx-get="/autocomplete"
           hx-trigger="keyup changed delay:300ms"
           hx-target="#autocomplete-results"
-          hx-vals='js:{"location": event.target.value}'
+          hx-include="[name='location']"
         >
         <div id="autocomplete-results" class="autocomplete-dropdown"></div>
       </div>
