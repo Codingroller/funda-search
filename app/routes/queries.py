@@ -256,10 +256,18 @@ async def query_run(request: Request, query_id: int, current_user: User = Depend
             .order_by(RunLog.started_at.desc()).limit(1)
         )
         run = result.scalar_one_or_none()
-    # 0 new listings: quiet inline confirmation, no page refresh
+    # 0 new listings: inline confirmation + OOB update of the Last search cell
     if run and run.status == "ok" and run.new_count == 0:
-        return templates.TemplateResponse(request, "partials/run_result.html", {"run": run})
-    # New listings found or error: refresh so the status column and count update
+        async with AsyncSessionLocal() as db:
+            query = await db.get(SavedQuery, query_id)
+        last_search = query.last_run_at.strftime('%d %b %H:%M') if query and query.last_run_at else ''
+        inline = templates.env.get_template("partials/run_result.html").render({"run": run})
+        oob = (
+            f'<td id="query-last-search-{query_id}" '
+            f'hx-swap-oob="true" data-label="Last search">{last_search}</td>'
+        )
+        return HTMLResponse(inline + oob)
+    # New listings found or error: refresh so all columns update
     return HTMLResponse("", headers={"HX-Refresh": "true"})
 
 

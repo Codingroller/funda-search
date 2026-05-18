@@ -5,7 +5,7 @@
       {% if minutes == query.interval_minutes %}{{ label }}{% endif %}
     {% endfor %}
   </td>
-  <td data-label="Last search">
+  <td id="query-last-search-{{ query.id }}" data-label="Last search">
     {% if query.last_run_at %}
       {{ query.last_run_at.strftime('%d %b %H:%M') }}
     {% else %}
