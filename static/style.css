@@ -189,29 +189,8 @@ a:hover { text-decoration: underline; }
   grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
   gap: 12px;
 }
-.listing-card-wrap {
-  position: relative;
-}
 .listing-card-wrap .listing-card {
   height: 100%;
-}
-.listing-card-new {
-  outline: 2px solid #15803d;
-  border-radius: var(--radius);
-}
-.badge-new {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 1;
-  background: #15803d;
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 99px;
-  letter-spacing: 0.03em;
-  pointer-events: none;
 }
 .listing-card {
   background: #fff;

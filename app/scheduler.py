@@ -86,33 +86,19 @@ async def run_query_job(query_id: int) -> None:
             if user and new_listings:
                 from app.notifier import notify_user
 
-                for listing in new_listings:
-                    title = " - ".join(
-                        filter(
-                            None,
-                            [query.name, listing.get("price"), listing.get("city")],
-                        )
+                count = len(new_listings)
+                noun = "house" if count == 1 else "houses"
+                try:
+                    await notify_user(
+                        user.id,
+                        title=query.name,
+                        body=f"{count} new {noun} found on Funda",
+                        url=f"/queries/{query_id}",
+                        image=new_listings[0].get("photo_url"),
+                        tag=f"query-{query_id}",
                     )
-                    parts = [listing.get("title", "")]
-                    if listing.get("living_area"):
-                        parts.append(f"{listing['living_area']} m²")
-                    if listing.get("rooms_count"):
-                        parts.append(f"{listing['rooms_count']} rooms")
-                    if listing.get("energy_label"):
-                        parts.append(f"Energy {listing['energy_label']}")
-                    body = " • ".join(p for p in parts if p)
-
-                    try:
-                        await notify_user(
-                            user.id,
-                            title=title[:120],
-                            body=body,
-                            url=listing.get("url"),
-                            image=listing.get("photo_url"),
-                            tag=str(listing.get("global_id", "")),
-                        )
-                    except Exception as notify_err:
-                        log.warning("push failed for listing %s: %s", listing.get("global_id"), notify_err)
+                except Exception as notify_err:
+                    log.warning("push failed for query %s: %s", query_id, notify_err)
 
             db.add(
                 RunLog(
