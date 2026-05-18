@@ -26,7 +26,12 @@
     <div style="margin-top:16px">
       <p class="text-muted small">Active unused invites (expire in 7 days):</p>
       {% for t in invite_tokens %}
-      <div class="topic-code small" style="margin-top:6px">/signup/{{ t.token[:16] }}… — created {{ t.created_at.strftime('%d %b %H:%M') }}</div>
+      {% set full_url = request.base_url | string | trim('/') ~ '/signup/' ~ t.token %}
+      <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <code class="topic-code small" style="word-break:break-all;flex:1">{{ full_url }}</code>
+        <button class="btn btn-sm" onclick="navigator.clipboard.writeText('{{ full_url }}').then(function(){this.textContent='Copied!';setTimeout(function(){this.textContent='Copy'}.bind(this),1500)}.bind(this))" title="Copy link">Copy</button>
+        <span class="text-muted small" style="white-space:nowrap">{{ t.created_at.strftime('%d %b %H:%M') }}</span>
+      </div>
       {% endfor %}
     </div>
     {% endif %}
