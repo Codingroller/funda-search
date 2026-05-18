@@ -180,12 +180,12 @@ class TestListingToDict:
     def test_photo_id_fallback_constructs_cdn_url(self):
         # iter_search populates photo_ids but not photo_urls
         d = _listing_to_dict(_make_search_listing(photo_urls=[], photo_ids=("228898333",)))
-        assert d["photo_url"] == "https://cloud.funda.nl/valentina_media/228/898/333_klein.jpg"
+        assert d["photo_url"] == "https://cloud.funda.nl/valentina_media/228/898/333_groot.jpg"
 
     def test_short_photo_id_no_path_split(self):
         # IDs shorter than 9 chars are used as-is
         d = _listing_to_dict(_make_search_listing(photo_urls=[], photo_ids=("12345",)))
-        assert "12345_klein.jpg" in d["photo_url"]
+        assert "12345_groot.jpg" in d["photo_url"]
 
     def test_no_price_object(self):
         m = _make_search_listing()

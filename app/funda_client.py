@@ -42,12 +42,17 @@ def _listing_to_dict(listing) -> dict:
             photo_url = urls[0]
         else:
             # iter_search populates photo_ids but not photo_urls; construct URL from ID.
-            # '228898333' -> 'https://cloud.funda.nl/valentina_media/228/898/333_klein.jpg'
+            # '228898333' -> 'https://cloud.funda.nl/valentina_media/228/898/333_groot.jpg'
             ids = getattr(media, "photo_ids", ())
             if ids:
                 pid = str(ids[0])
                 path = f"{pid[:-6]}/{pid[-6:-3]}/{pid[-3:]}" if len(pid) >= 9 else pid
-                photo_url = f"https://cloud.funda.nl/valentina_media/{path}_klein.jpg"
+                photo_url = f"https://cloud.funda.nl/valentina_media/{path}_groot.jpg"
+
+    # Upgrade any klein/medium CDN variant to groot (~720×540) so cache_photo_sync
+    # downscales rather than upscaling, producing a sharper thumbnail.
+    if photo_url:
+        photo_url = photo_url.replace("_klein.jpg", "_groot.jpg").replace("_medium.jpg", "_groot.jpg")
 
     pub_date = getattr(listing, "publication_date", None)
 
