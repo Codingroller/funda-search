@@ -1,12 +1,15 @@
 import asyncio
 import hashlib
 import io
+import time
 from pathlib import Path
 
 import httpx
 from PIL import Image
 
 from app.config import settings
+
+IMAGE_TTL = 30 * 24 * 3600  # 30 days in seconds
 
 
 def _images_dir() -> Path:
@@ -16,13 +19,15 @@ def _images_dir() -> Path:
 
 
 def cache_photo_sync(photo_url: str) -> str | None:
-    """Download photo_url, resize to 25%, save locally. Returns /img/<hash>.jpg or None on error."""
+    """Download photo_url, resize to 320×240, save locally. Returns /img/<hash>.jpg or None on error."""
     url_hash = hashlib.sha256(photo_url.encode()).hexdigest()[:20]
     filename = f"{url_hash}.jpg"
     local_path = _images_dir() / filename
 
     if local_path.exists():
-        return f"/img/{filename}"
+        if time.time() - local_path.stat().st_mtime < IMAGE_TTL:
+            return f"/img/{filename}"
+        local_path.unlink()  # expired — fall through to re-download
 
     try:
         with httpx.Client(timeout=15, follow_redirects=True) as client:
@@ -58,15 +63,16 @@ def cache_hero_sync(photo_url: str) -> str | None:
     """Download the hero photo and cache the raw bytes without reprocessing.
 
     pyfunda's client.listing() returns bare CDN URLs (no size suffix) which
-    are already full-resolution (equivalent to _xxxl, ~770 KB). Writing raw
-    bytes preserves that quality exactly — no PIL decode/re-encode loss.
+    are already full-resolution. Writing raw bytes preserves that quality exactly.
     """
     url_hash = hashlib.sha256(photo_url.encode()).hexdigest()[:20]
     filename = f"h_{url_hash}.jpg"
     local_path = _images_dir() / filename
 
     if local_path.exists():
-        return f"/img/{filename}"
+        if time.time() - local_path.stat().st_mtime < IMAGE_TTL:
+            return f"/img/{filename}"
+        local_path.unlink()  # expired — fall through to re-download
 
     try:
         with httpx.Client(timeout=20, follow_redirects=True) as client:

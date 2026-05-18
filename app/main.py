@@ -11,7 +11,7 @@ from app.auth import UnauthenticatedException, hash_password
 from app.config import settings
 from app.db import AsyncSessionLocal, Base, engine
 from app.models import User
-from app.scheduler import reconcile_jobs, scheduler
+from app.scheduler import cleanup_old_data, reconcile_jobs, scheduler
 
 
 _WEAK_KEYS = {"change-me", "secret", "changeme", "password", "test", ""}
@@ -81,6 +81,8 @@ async def lifespan(app: FastAPI):
 
     scheduler.start()
     await reconcile_jobs()
+    scheduler.add_job(cleanup_old_data, "interval", hours=24, id="cleanup_old_data",
+                      replace_existing=True)
 
     yield
 

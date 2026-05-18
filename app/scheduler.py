@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timedelta
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.db import AsyncSessionLocal
 from app.models import SavedQuery, SeenListing, RunLog, User
@@ -184,6 +184,16 @@ def remove_query_job(query_id: int) -> None:
     job_id = f"query_{query_id}"
     if scheduler.get_job(job_id):
         scheduler.remove_job(job_id)
+
+
+async def cleanup_old_data() -> None:
+    """Purge seen_listings and run_logs older than 90 days."""
+    cutoff = datetime.utcnow() - timedelta(days=90)
+    async with AsyncSessionLocal() as db:
+        await db.execute(delete(SeenListing).where(SeenListing.seen_at < cutoff))
+        await db.execute(delete(RunLog).where(RunLog.started_at < cutoff))
+        await db.commit()
+    logging.getLogger(__name__).info("cleanup_old_data: purged records older than %s", cutoff.date())
 
 
 async def reconcile_jobs() -> None:
