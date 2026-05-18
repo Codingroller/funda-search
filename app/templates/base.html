@@ -17,6 +17,10 @@
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('/sw.js', { scope: '/' })
           .catch(function (e) { console.warn('SW registration failed', e); });
+        // Clear the app icon badge whenever the user opens the app
+        navigator.serviceWorker.ready.then(function (reg) {
+          if (reg.active) reg.active.postMessage({ type: 'CLEAR_BADGE' });
+        }).catch(function () {});
       });
     }
   </script>

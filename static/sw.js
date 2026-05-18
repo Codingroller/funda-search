@@ -1,3 +1,41 @@
+// IndexedDB helpers for persisting the badge count across SW restarts
+function _openDB() {
+  return new Promise(function (resolve, reject) {
+    var req = indexedDB.open('funda-badge', 1);
+    req.onupgradeneeded = function () { req.result.createObjectStore('kv'); };
+    req.onsuccess = function () { resolve(req.result); };
+    req.onerror = function () { reject(req.error); };
+  });
+}
+function _getCount(db) {
+  return new Promise(function (resolve) {
+    var req = db.transaction('kv', 'readonly').objectStore('kv').get('count');
+    req.onsuccess = function () { resolve(req.result || 0); };
+    req.onerror = function () { resolve(0); };
+  });
+}
+function _setCount(db, n) {
+  return new Promise(function (resolve) {
+    var tx = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(n, 'count');
+    tx.oncomplete = resolve;
+    tx.onerror = resolve;
+  });
+}
+
+function _setBadge(n) {
+  if ('setAppBadge' in navigator) {
+    navigator.setAppBadge(n).catch(function () {});
+  }
+}
+function _clearBadge(db) {
+  return _setCount(db, 0).then(function () {
+    if ('clearAppBadge' in navigator) {
+      navigator.clearAppBadge().catch(function () {});
+    }
+  });
+}
+
 self.addEventListener('push', function (event) {
   var d = {};
   try { d = event.data ? event.data.json() : {}; } catch (_) {}
@@ -11,7 +49,20 @@ self.addEventListener('push', function (event) {
     tag: d.tag || undefined,
     renotify: !!d.tag,
   };
-  event.waitUntil(self.registration.showNotification(title, opts));
+
+  event.waitUntil(
+    _openDB().then(function (db) {
+      return _getCount(db).then(function (current) {
+        var total = current + (d.count || 1);
+        return _setCount(db, total).then(function () {
+          _setBadge(total);
+          return self.registration.showNotification(title, opts);
+        });
+      });
+    }).catch(function () {
+      return self.registration.showNotification(title, opts);
+    })
+  );
 });
 
 self.addEventListener('notificationclick', function (event) {
@@ -29,6 +80,15 @@ self.addEventListener('notificationclick', function (event) {
       return clients.openWindow(target);
     })
   );
+});
+
+// Page sends this message when it loads to clear the badge
+self.addEventListener('message', function (event) {
+  if (event.data && event.data.type === 'CLEAR_BADGE') {
+    event.waitUntil(
+      _openDB().then(function (db) { return _clearBadge(db); }).catch(function () {})
+    );
+  }
 });
 
 self.addEventListener('pushsubscriptionchange', function (event) {

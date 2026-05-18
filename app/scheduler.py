@@ -96,6 +96,7 @@ async def run_query_job(query_id: int) -> None:
                         url=f"/queries/{query_id}",
                         image=new_listings[0].get("photo_url"),
                         tag=f"query-{query_id}",
+                        count=count,
                     )
                 except Exception as notify_err:
                     log.warning("push failed for query %s: %s", query_id, notify_err)

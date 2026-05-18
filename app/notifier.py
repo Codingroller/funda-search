@@ -41,6 +41,7 @@ async def notify_user(
     url: str | None = None,
     image: str | None = None,
     tag: str | None = None,
+    count: int = 1,
 ) -> None:
     if not settings.vapid_private_key or not settings.vapid_public_key:
         log.warning("VAPID keys not configured — skipping push notification")
@@ -60,6 +61,7 @@ async def notify_user(
         "url": url,
         "image": image,
         "tag": tag,
+        "count": count,
     })
 
     loop = asyncio.get_running_loop()
