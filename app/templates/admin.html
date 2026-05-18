@@ -76,7 +76,8 @@
                 </button>
               </form>
               <form method="post" action="/admin/users/{{ u.id }}/delete"
-                    onsubmit="return confirm('Delete {{ u.username }} and all their data?')">
+                    class="js-confirm-delete"
+                    data-confirm="Delete {{ u.username }} and all their data?">
                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
               </form>
             </div>
@@ -88,4 +89,11 @@
     </table>
   </div>
 </div>
+<script>
+document.querySelectorAll('.js-confirm-delete').forEach(function (form) {
+  form.addEventListener('submit', function (e) {
+    if (!confirm(form.dataset.confirm)) e.preventDefault();
+  });
+});
+</script>
 {% endblock %}
