@@ -124,6 +124,69 @@
   }
   </script>
 
+  <!-- ── Notification permission prompt (shown once after install) ── -->
+  <div id="notif-prompt" style="display:none" role="dialog" aria-label="Enable notifications">
+    <div class="notif-prompt-inner">
+      <div class="notif-prompt-text">
+        <strong>Stay updated</strong>
+        <span>Get notified when new listings match your searches</span>
+      </div>
+      <div class="notif-prompt-actions">
+        <button class="btn btn-ghost btn-sm" onclick="dismissNotifPrompt()">Not now</button>
+        <button class="btn btn-primary btn-sm" onclick="enableNotifFromPrompt()">Enable</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  function urlBase64ToUint8Array(b64) {
+    var pad = '='.repeat((4 - b64.length % 4) % 4);
+    var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    var arr = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+
+  (function () {
+    var isStandalone = window.navigator.standalone === true ||
+                       window.matchMedia('(display-mode: standalone)').matches;
+    if (!isStandalone) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (localStorage.getItem('notif-prompt-dismissed')) return;
+    if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
+
+    // Small delay so the app feels settled before the prompt appears
+    setTimeout(function () {
+      document.getElementById('notif-prompt').style.display = 'flex';
+    }, 1200);
+  })();
+
+  function dismissNotifPrompt() {
+    document.getElementById('notif-prompt').style.display = 'none';
+    localStorage.setItem('notif-prompt-dismissed', '1');
+  }
+
+  async function enableNotifFromPrompt() {
+    dismissNotifPrompt();
+    try {
+      var reg = await navigator.serviceWorker.ready;
+      var perm = await Notification.requestPermission();
+      if (perm !== 'granted') return;
+      var keyText = await fetch('/push/vapid-public-key').then(function (r) { return r.text(); });
+      var key = urlBase64ToUint8Array(keyText.trim());
+      var sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+      var j = sub.toJSON();
+      await fetch('/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }),
+      });
+    } catch (e) {
+      console.warn('Notification subscribe failed', e);
+    }
+  }
+  </script>
+
   <footer class="footer">
     <small>
       Funda Search &mdash;
