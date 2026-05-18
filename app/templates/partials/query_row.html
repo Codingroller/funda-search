@@ -1,20 +1,33 @@
-<tr id="query-row-{{ query.id }}">
-  <td data-label="Name"><a href="/queries/{{ query.id }}">{{ query.name }}</a></td>
-  <td data-label="Interval">
-    {% for minutes, label in intervals %}
-      {% if minutes == query.interval_minutes %}{{ label }}{% endif %}
-    {% endfor %}
-  </td>
-  <td id="query-last-search-{{ query.id }}" data-label="Last search">
-    {% if query.last_run_status == 'error' %}
-      <span class="pill danger"><span class="pill-dot"></span>Error</span>
-    {% elif query.last_run_at %}
-      {{ query.last_run_at.strftime('%d %b %H:%M') }}
-    {% else %}
-      <span class="text-muted">Never</span>
-    {% endif %}
-  </td>
-  <td class="actions" data-label="Actions">
+<div id="query-row-{{ query.id }}" class="query-card">
+  <a href="/queries/{{ query.id }}" class="query-card-link">
+    <div class="query-card-name">{{ query.name }}</div>
+    <div class="query-card-meta">
+      <div class="query-card-meta-row">
+        <span class="query-card-meta-label">Interval</span>
+        <span class="query-card-meta-value">
+          {% for minutes, label in intervals %}
+            {% if minutes == query.interval_minutes %}Every {{ label }}{% endif %}
+          {% endfor %}
+        </span>
+      </div>
+      <div class="query-card-meta-row">
+        <span class="query-card-meta-label">Last search</span>
+        <span id="query-last-search-{{ query.id }}" class="query-card-meta-value">
+          {% if query.last_run_status == 'error' %}
+            <span class="pill danger"><span class="pill-dot"></span>Error</span>
+          {% elif query.last_run_at %}
+            {{ query.last_run_at.strftime('%d %b %H:%M') }}
+          {% else %}
+            <span class="text-muted">Never</span>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+  </a>
+  <div class="query-cta-row">
+    <a href="/queries/{{ query.id }}" class="query-cta">View details →</a>
+  </div>
+  <div class="query-card-foot">
     <a href="/queries/{{ query.id }}/edit" class="btn btn-sm">Edit</a>
     <button
       class="btn btn-sm"
@@ -23,6 +36,8 @@
       hx-swap="innerHTML"
       hx-indicator="#run-result-{{ query.id }}"
     >Search</button>
+    <span id="run-result-{{ query.id }}" class="run-inline"></span>
+    <span style="margin-left:auto"></span>
     <button
       class="btn btn-sm btn-danger"
       hx-delete="/queries/{{ query.id }}"
@@ -30,6 +45,5 @@
       hx-swap="outerHTML"
       hx-confirm="Delete '{{ query.name }}'?"
     >Delete</button>
-    <span id="run-result-{{ query.id }}" class="run-inline"></span>
-  </td>
-</tr>
+  </div>
+</div>

@@ -255,8 +255,8 @@ async def query_run(request: Request, query_id: int, current_user: User = Depend
         last_search = query.last_run_at.strftime('%d %b %H:%M') if query and query.last_run_at else ''
         inline = templates.env.get_template("partials/run_result.html").render({"run": run})
         oob = (
-            f'<td id="query-last-search-{query_id}" '
-            f'hx-swap-oob="true" data-label="Last search">{last_search}</td>'
+            f'<span id="query-last-search-{query_id}" '
+            f'hx-swap-oob="true">{last_search}</span>'
         )
         return HTMLResponse(inline + oob)
     # New listings found or error: refresh so all columns update

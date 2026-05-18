@@ -7,22 +7,10 @@
 </div>
 
 {% if queries %}
-<div class="table-wrap">
-  <table class="table table-queries">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Interval</th>
-        <th>Last search</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for query in queries %}
-        {% include "partials/query_row.html" %}
-      {% endfor %}
-    </tbody>
-  </table>
+<div class="query-grid">
+  {% for query in queries %}
+    {% include "partials/query_row.html" %}
+  {% endfor %}
 </div>
 {% else %}
 <div class="empty-state">
