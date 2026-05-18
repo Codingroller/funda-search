@@ -126,9 +126,7 @@ async def query_create(
     radius_km: Optional[int] = Form(None),
     sort: str = Form("newest"),
     interval_minutes: int = Form(60),
-    enabled_val: Optional[str] = Form(None),
 ):
-    enabled = enabled_val is not None
     form_data = await request.form()
     object_type = list(form_data.getlist("object_type"))
     energy_label = list(form_data.getlist("energy_label"))
@@ -144,15 +142,14 @@ async def query_create(
             name=name,
             params_json=json.dumps(params),
             interval_minutes=interval_minutes,
-            enabled=enabled,
+            enabled=True,
         )
         db.add(query)
         await db.commit()
         query_id = query.id
 
-    if enabled:
-        add_query_job(query_id, interval_minutes)
-        await run_query_job(query_id)  # first run immediately → results visible on redirect
+    add_query_job(query_id, interval_minutes)
+    await run_query_job(query_id)  # first run immediately → results visible on redirect
 
     return RedirectResponse(f"/queries/{query_id}", status_code=302)
 
@@ -189,9 +186,7 @@ async def query_update(
     radius_km: Optional[int] = Form(None),
     sort: str = Form("newest"),
     interval_minutes: int = Form(60),
-    enabled_val: Optional[str] = Form(None),
 ):
-    enabled = enabled_val is not None
     form_data = await request.form()
     object_type = list(form_data.getlist("object_type"))
     energy_label = list(form_data.getlist("energy_label"))
@@ -206,13 +201,10 @@ async def query_update(
         query.name = name
         query.params_json = json.dumps(params)
         query.interval_minutes = interval_minutes
-        query.enabled = enabled
+        query.enabled = True
         await db.commit()
 
-    if enabled:
-        add_query_job(query_id, interval_minutes)
-    else:
-        remove_query_job(query_id)
+    add_query_job(query_id, interval_minutes)
 
     return RedirectResponse("/", status_code=302)
 

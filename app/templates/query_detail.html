@@ -12,10 +12,6 @@
       ] %}
         {% if minutes == query.interval_minutes %}{{ label }}{% endif %}
       {% endfor %}
-      &mdash;
-      <span class="pill {% if query.enabled %}success{% endif %}">
-        <span class="pill-dot"></span>{% if query.enabled %}Enabled{% else %}Disabled{% endif %}
-      </span>
     </p>
   </div>
   <div class="header-actions">
@@ -46,7 +42,6 @@
         <tr>
           <th>Started</th>
           <th>Duration</th>
-          <th>Status</th>
           <th>Results</th>
           <th>New</th>
           <th>Error</th>
@@ -60,13 +55,6 @@
             {% if run.finished_at %}
               {{ ((run.finished_at - run.started_at).total_seconds() | round(1)) }}s
             {% else %}—{% endif %}
-          </td>
-          <td>
-            {% if run.status == 'ok' %}
-              <span class="pill success"><span class="pill-dot"></span>OK</span>
-            {% else %}
-              <span class="pill danger"><span class="pill-dot"></span>Error</span>
-            {% endif %}
           </td>
           <td>{{ run.result_count }}</td>
           <td>{{ run.new_count }}</td>

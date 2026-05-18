@@ -6,30 +6,13 @@
     {% endfor %}
   </td>
   <td id="query-last-search-{{ query.id }}" data-label="Last search">
-    {% if query.last_run_at %}
+    {% if query.last_run_status == 'error' %}
+      <span class="pill danger"><span class="pill-dot"></span>Error</span>
+    {% elif query.last_run_at %}
       {{ query.last_run_at.strftime('%d %b %H:%M') }}
     {% else %}
       <span class="text-muted">Never</span>
     {% endif %}
-  </td>
-  <td data-label="Status">
-    {% if query.last_run_status == 'ok' %}
-      <span class="pill success"><span class="pill-dot"></span>OK</span>
-    {% elif query.last_run_status == 'error' %}
-      <span class="pill danger"><span class="pill-dot"></span>Error</span>
-    {% else %}
-      <span class="pill">—</span>
-    {% endif %}
-  </td>
-  <td data-label="Enabled">
-    <button
-      class="toggle-btn {% if query.enabled %}active{% endif %}"
-      hx-post="/queries/{{ query.id }}/toggle"
-      hx-target="#query-row-{{ query.id }}"
-      hx-swap="outerHTML"
-    >
-      {% if query.enabled %}On{% else %}Off{% endif %}
-    </button>
   </td>
   <td class="actions" data-label="Actions">
     <a href="/queries/{{ query.id }}/edit" class="btn btn-sm">Edit</a>
