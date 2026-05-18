@@ -71,8 +71,7 @@
           <td>{{ run.new_count }}</td>
           <td class="text-muted small">{{ run.error_message or '' }}</td>
         </tr>
-        {% set all_listings = run.all_listings_json | fromjson %}
-        {% set display_listings = all_listings if all_listings else run.new_listings_json | fromjson %}
+        {% set display_listings = run.new_listings_json | fromjson %}
         {% if display_listings %}
         <tr class="listings-row">
           <td colspan="6">
