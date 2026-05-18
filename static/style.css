@@ -470,12 +470,14 @@ h2 { font-size: 16px; font-weight: 600; }
   width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0;
 }
 .liked-check-item input[type="date"],
+.liked-check-item input[type="datetime-local"],
 .liked-check-item input[type="number"] {
   border: 1px solid var(--border-strong); border-radius: var(--r-sm);
   padding: 5px 8px; font-size: 13px; font-family: var(--font);
-  background: var(--surface); width: 100%; box-sizing: border-box;
+  background: var(--surface); width: 100%; max-width: 100%; box-sizing: border-box;
 }
 .liked-check-item input[type="date"]:focus,
+.liked-check-item input[type="datetime-local"]:focus,
 .liked-check-item input[type="number"]:focus {
   outline: none; border-color: var(--text);
   box-shadow: 0 0 0 3px oklch(0.18 0.012 250 / 0.08);
