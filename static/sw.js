@@ -25,13 +25,14 @@ function _setCount(db, n) {
 
 function _setBadge(n) {
   if ('setAppBadge' in navigator) {
-    navigator.setAppBadge(n).catch(function () {});
+    return navigator.setAppBadge(n).catch(function () {});
   }
+  return Promise.resolve();
 }
 function _clearBadge(db) {
   return _setCount(db, 0).then(function () {
     if ('clearAppBadge' in navigator) {
-      navigator.clearAppBadge().catch(function () {});
+      return navigator.clearAppBadge().catch(function () {});
     }
   });
 }
@@ -51,17 +52,21 @@ self.addEventListener('push', function (event) {
   };
 
   event.waitUntil(
-    _openDB().then(function (db) {
-      return _getCount(db).then(function (current) {
-        var total = current + (d.count || 1);
-        return _setCount(db, total).then(function () {
-          _setBadge(total);
-          return self.registration.showNotification(title, opts);
+    _openDB()
+      .then(function (db) {
+        return _getCount(db).then(function (current) {
+          var total = current + (d.count || 1);
+          // Chain both DB write AND badge update before showing the notification.
+          // All three must complete inside event.waitUntil — iOS terminates the
+          // SW as soon as showNotification resolves if anything is fire-and-forget.
+          return _setCount(db, total)
+            .then(function () { return _setBadge(total); })
+            .then(function () { return self.registration.showNotification(title, opts); });
         });
-      });
-    }).catch(function () {
-      return self.registration.showNotification(title, opts);
-    })
+      })
+      .catch(function () {
+        return self.registration.showNotification(title, opts);
+      })
   );
 });
 
