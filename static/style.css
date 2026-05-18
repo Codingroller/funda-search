@@ -69,6 +69,9 @@ a:hover { text-decoration: underline; }
 /* ── Footer ── */
 .footer { text-align: center; padding: 20px; color: var(--text-faint); font-size: 12px; }
 
+/* ── Bottom tab bar (desktop: hidden; mobile: shown via media query) ── */
+.bottom-nav { display: none; }
+
 /* ── Page header ── */
 .page-header {
   display: flex;
@@ -784,13 +787,56 @@ h2 { font-size: 16px; font-weight: 600; }
 /* ── Mobile (≤ 640 px) ── */
 @media (max-width: 640px) {
 
-  /* topbar: stack or scroll */
-  .topbar { padding: 0 14px; gap: 8px; flex-wrap: wrap; height: auto; min-height: 52px; }
-  .topbar-nav { margin-left: 0; overflow-x: auto; flex-shrink: 0; width: 100%; }
-  .topbar-nav-link { font-size: 13px; padding: 6px 10px; min-height: 40px; display: inline-flex; align-items: center; }
+  /* topbar: single slim row — bottom nav handles navigation */
+  .topbar { padding: 0 14px; gap: 8px; flex-wrap: nowrap; height: 52px; min-height: 52px; }
+  .topbar-nav { display: none; }
   .topbar-end .topbar-user { display: none; }
 
-  .container { padding: 16px 14px calc(48px + env(safe-area-inset-bottom, 0px)); }
+  /* extra bottom padding so content clears the fixed bottom nav */
+  .container { padding: 16px 14px calc(80px + env(safe-area-inset-bottom, 0px)); }
+
+  /* lift the notification prompt above the bottom tab bar */
+  #notif-prompt { bottom: 64px; padding-bottom: 14px; }
+
+  /* ── Bottom tab bar ── */
+  .bottom-nav {
+    display: flex;
+    position: fixed; left: 0; right: 0; bottom: 0;
+    z-index: 50;
+    padding: 4px 4px env(safe-area-inset-bottom, 0px);
+    background: oklch(0.99 0.003 250 / 0.94);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border);
+    justify-content: space-around;
+  }
+  .bottom-nav-link {
+    flex: 1;
+    min-height: 56px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 10.5px;
+    font-weight: 500;
+    border-radius: var(--r-sm);
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-nav-link:hover { text-decoration: none; color: var(--text-muted); }
+  .bottom-nav-link.is-active { color: var(--primary); }
+  .bottom-nav-icon {
+    width: 22px; height: 22px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .bottom-nav-link.is-active .bottom-nav-icon { stroke-width: 2.25; }
 
   .page-header { flex-direction: column; align-items: stretch; gap: 10px; }
   .header-actions { display: flex; gap: 8px; }
