@@ -923,14 +923,15 @@ h2 { font-size: 16px; font-weight: 600; }
 
 
   /* Runs table: inline summary */
+  /* Runs table columns: 1=Started 2=Duration 3=Results 4=New 5=Error */
   .table-runs thead { display: none; }
   .table-runs tr { display: block; padding: 10px 12px; border-bottom: 1px solid var(--border); }
   .table-runs td { display: inline; border: 0; padding: 0; font-size: 13px; }
-  .table-runs td:nth-child(2), .table-runs td:nth-child(6) { display: none; }
-  .table-runs td:nth-child(1)::after { content: " · "; color: var(--text-muted); }
-  .table-runs td:nth-child(3)::after { content: " · "; color: var(--text-muted); }
-  .table-runs td:nth-child(4)::before { content: "results: "; color: var(--text-muted); }
-  .table-runs td:nth-child(5)::before { content: " · new: "; color: var(--text-muted); }
+  .table-runs td:nth-child(2), .table-runs td:nth-child(5) { display: none; }
+  .table-runs td:nth-child(1)::after  { content: " · "; color: var(--text-muted); }
+  .table-runs td:nth-child(3)::before { content: "results: "; color: var(--text-muted); }
+  .table-runs td:nth-child(3)::after  { content: " · "; color: var(--text-muted); }
+  .table-runs td:nth-child(4)::before { content: "new: "; color: var(--text-muted); }
   .listings-row { display: block !important; }
   .listings-row td { display: block !important; padding: 8px 0; }
 
