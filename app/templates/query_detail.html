@@ -34,7 +34,7 @@
 <div class="card">
   <div class="card-header" style="justify-content:space-between">
     <h3>Recent searches</h3>
-    <span class="run-last-search">Last search: {{ runs[0].started_at.strftime('%d-%m-%Y %H:%M') }}</span>
+    <span class="run-last-search">Last search: {{ runs[0].started_at | localdt('%d-%m-%Y %H:%M') }}</span>
   </div>
   <div class="card-body" style="padding:0">
   <table class="data-table table-runs">
@@ -50,7 +50,7 @@
       <tbody>
         {% for run in runs if run.new_count > 0 or run.status != 'ok' %}
         <tr>
-          <td>{{ run.started_at.strftime('%d %b %H:%M:%S') }}</td>
+          <td>{{ run.started_at | localdt('%d %b %H:%M:%S') }}</td>
           <td>
             {% if run.finished_at %}
               {{ ((run.finished_at - run.started_at).total_seconds() | round(1)) }}s

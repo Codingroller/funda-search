@@ -5,7 +5,7 @@
         <span class="pill-dot"></span>+{{ run.new_count }} new
       </span>
     {% else %}
-      <span class="run-last-search">last search: {{ run.finished_at.strftime('%d-%m-%Y %H:%M') }}</span>
+      <span class="run-last-search">last search: {{ run.finished_at | localdt('%d-%m-%Y %H:%M') }}</span>
     {% endif %}
   {% else %}
     <span class="pill danger" title="{{ run.error_message }}"><span class="pill-dot"></span>Error</span>

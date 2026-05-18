@@ -1,9 +1,24 @@
 import json
+from datetime import timezone
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
+
 from fastapi.templating import Jinja2Templates
+
+_AMS = ZoneInfo("Europe/Amsterdam")
 
 templates = Jinja2Templates(directory="app/templates")
 templates.env.filters["fromjson"] = json.loads
+
+
+def _localdt(dt, fmt: str = "%d %b %H:%M") -> str:
+    """Convert a naive UTC datetime to Amsterdam local time and format it."""
+    if dt is None:
+        return ""
+    return dt.replace(tzinfo=timezone.utc).astimezone(_AMS).strftime(fmt)
+
+
+templates.env.filters["localdt"] = _localdt
 
 
 def _cbs_value(value):

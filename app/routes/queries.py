@@ -252,7 +252,13 @@ async def query_run(request: Request, query_id: int, current_user: User = Depend
     if run and run.status == "ok" and run.new_count == 0:
         async with AsyncSessionLocal() as db:
             query = await db.get(SavedQuery, query_id)
-        last_search = query.last_run_at.strftime('%d %b %H:%M') if query and query.last_run_at else ''
+        from datetime import timezone
+        from zoneinfo import ZoneInfo
+        _ams = ZoneInfo("Europe/Amsterdam")
+        last_search = (
+            query.last_run_at.replace(tzinfo=timezone.utc).astimezone(_ams).strftime('%d %b %H:%M')
+            if query and query.last_run_at else ''
+        )
         inline = templates.env.get_template("partials/run_result.html").render({"run": run})
         oob = (
             f'<span id="query-last-search-{query_id}" '

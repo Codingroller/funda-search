@@ -16,7 +16,7 @@
           {% if query.last_run_status == 'error' %}
             <span class="pill danger"><span class="pill-dot"></span>Error</span>
           {% elif query.last_run_at %}
-            {{ query.last_run_at.strftime('%d %b %H:%M') }}
+            {{ query.last_run_at | localdt }}
           {% else %}
             <span class="text-muted">Never</span>
           {% endif %}

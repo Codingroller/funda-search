@@ -69,7 +69,7 @@
     {# Actions row #}
     <div class="liked-actions">
       <a href="{{ listing.url }}" target="_blank" rel="noopener" class="listing-funda-link" style="font-size:13px">Open on Funda ↗</a>
-      <span class="text-muted small">{{ item.liked_at.strftime('%d %b') }}</span>
+      <span class="text-muted small">{{ item.liked_at | localdt('%d %b') }}</span>
       {% if own %}
       <button
         class="like-btn liked"

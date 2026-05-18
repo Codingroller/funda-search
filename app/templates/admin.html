@@ -30,7 +30,7 @@
       <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <code class="topic-code small" style="word-break:break-all;flex:1">{{ full_url }}</code>
         <button class="btn btn-sm" onclick="navigator.clipboard.writeText('{{ full_url }}').then(function(){this.textContent='Copied!';setTimeout(function(){this.textContent='Copy'}.bind(this),1500)}.bind(this))" title="Copy link">Copy</button>
-        <span class="text-muted small" style="white-space:nowrap">{{ t.created_at.strftime('%d %b %H:%M') }}</span>
+        <span class="text-muted small" style="white-space:nowrap">{{ t.created_at | localdt }}</span>
       </div>
       {% endfor %}
     </div>
@@ -71,7 +71,7 @@
             {% endif %}
           </td>
           <td>{{ row.query_count }}</td>
-          <td>{{ u.created_at.strftime('%d %b %Y') }}</td>
+          <td>{{ u.created_at | localdt('%d %b %Y') }}</td>
           <td>
             {% if u.id != current_user.id %}
             <div style="display:flex;gap:6px">
