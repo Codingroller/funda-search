@@ -303,6 +303,7 @@ h2 { font-size: 16px; font-weight: 600; }
 .listing-ppm2 { font-size: 11px; color: var(--text-muted); }
 .listing-title { font-size: 13px; margin-top: 2px; color: var(--text); }
 .listing-meta { display: flex; gap: 8px; font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.listing-cta { font-size: 12px; font-weight: 600; color: var(--primary); margin-top: 8px; }
 .listing-card-foot {
   border-top: 1px solid var(--border);
   padding: 5px 10px 5px 6px;
