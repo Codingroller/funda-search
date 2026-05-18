@@ -72,12 +72,14 @@
           <td class="text-muted small">{{ run.error_message or '' }}</td>
         </tr>
         {% set all_listings = run.all_listings_json | fromjson %}
-        {% set new_ids = run.new_listings_json | fromjson | map(attribute='global_id') | list %}
-        {% if all_listings %}
+        {% set new_listings = run.new_listings_json | fromjson %}
+        {% set display_listings = all_listings if all_listings else new_listings %}
+        {% set new_ids = new_listings | map(attribute='global_id') | list %}
+        {% if display_listings %}
         <tr class="listings-row">
           <td colspan="6">
             <div class="listings-grid">
-              {% for listing in all_listings %}
+              {% for listing in display_listings %}
                 {% set is_new = listing.global_id in new_ids %}
                 <div class="listing-card-wrap{% if is_new %} listing-card-new{% endif %}">
                   {% if is_new %}<span class="badge-new">New</span>{% endif %}
