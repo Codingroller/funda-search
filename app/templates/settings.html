@@ -15,6 +15,23 @@
 <div class="settings-grid">
   <div class="card">
     <div class="card-header">
+      <h3>Appearance</h3>
+    </div>
+    <div class="card-body">
+      <div class="theme-toggle">
+        <span class="theme-icon">☀️</span>
+        <label class="theme-switch" aria-label="Dark mode">
+          <input type="checkbox" id="theme-toggle-input">
+          <span class="theme-track"></span>
+        </label>
+        <span class="theme-icon">🌙</span>
+        <span class="theme-toggle-label" id="theme-toggle-label">Light mode</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
       <h3>Push Notifications</h3>
     </div>
     <div class="card-body">
@@ -140,6 +157,28 @@ async function disablePush() {
   } catch (e) {
     document.getElementById('push-disabled').style.display = 'block';
   }
+})();
+</script>
+
+<script>
+(function () {
+  var input = document.getElementById('theme-toggle-input');
+  var label = document.getElementById('theme-toggle-label');
+  var isDark = localStorage.getItem('theme') === 'dark';
+  input.checked = isDark;
+  label.textContent = isDark ? 'Dark mode' : 'Light mode';
+
+  input.addEventListener('change', function () {
+    if (input.checked) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+      label.textContent = 'Dark mode';
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('theme', 'light');
+      label.textContent = 'Light mode';
+    }
+  });
 })();
 </script>
 {% endblock %}

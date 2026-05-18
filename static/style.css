@@ -10,6 +10,34 @@
   --font:   'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
+/* ── Dark mode token overrides ── */
+[data-theme="dark"] {
+  --bg:            oklch(0.13 0.010 250);
+  --surface:       oklch(0.18 0.012 250);
+  --surface-2:     oklch(0.22 0.012 250);
+  --border:        oklch(0.30 0.010 250);
+  --border-strong: oklch(0.38 0.012 250);
+  --text:          oklch(0.93 0.006 250);
+  --text-muted:    oklch(0.62 0.012 250);
+  --text-faint:    oklch(0.44 0.010 250);
+  --primary:       oklch(0.62 0.14  255);
+  --primary-hover: oklch(0.68 0.14  255);
+  --primary-soft:  oklch(0.22 0.05  255);
+  --success:       oklch(0.65 0.13  155);
+  --success-soft:  oklch(0.20 0.04  155);
+  --danger:        oklch(0.65 0.17  25);
+  --danger-soft:   oklch(0.20 0.05  25);
+  --warning:       oklch(0.70 0.14  70);
+  --warning-soft:  oklch(0.20 0.05  70);
+  --info:          oklch(0.62 0.12  235);
+  --info-soft:     oklch(0.20 0.04  235);
+  --shadow-sm:     0 1px 3px oklch(0 0 0 / 0.30);
+  --shadow:        0 2px 8px oklch(0 0 0 / 0.40), 0 1px 3px oklch(0 0 0 / 0.30);
+  color-scheme: dark;
+}
+/* Keep install banner always dark regardless of theme */
+[data-theme="dark"] #install-banner { background: oklch(0.28 0.01 250); }
+
 /* ── Body override: use Inter and match BHSG's 14px base ── */
 body {
   font-family: var(--font);
@@ -868,6 +896,7 @@ h2 { font-size: 16px; font-weight: 600; }
     padding: 4px 4px env(safe-area-inset-bottom, 0px);
     background: oklch(0.99 0.003 250 / 0.94);
     backdrop-filter: blur(10px);
+    transition: background 0.2s;
     -webkit-backdrop-filter: blur(10px);
     border-top: 1px solid var(--border);
     justify-content: space-around;
@@ -975,6 +1004,33 @@ h2 { font-size: 16px; font-weight: 600; }
   .nb-legend-item { white-space: nowrap; }
   .nb-bar-group { padding: 6px 0 3px; }
 }
+
+/* ── Dark mode overrides for hard-coded colours ── */
+[data-theme="dark"] .bottom-nav { background: oklch(0.18 0.012 250 / 0.94); }
+
+/* ── Dark mode toggle switch ── */
+.theme-toggle { display: flex; align-items: center; gap: 12px; }
+.theme-toggle-label { font-size: 13px; font-weight: 500; color: var(--text); }
+.theme-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.theme-switch input { opacity: 0; width: 0; height: 0; }
+.theme-track {
+  position: absolute; inset: 0;
+  background: var(--border-strong);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.theme-switch input:checked + .theme-track { background: var(--primary); }
+.theme-track::before {
+  content: '';
+  position: absolute; left: 3px; top: 3px;
+  width: 18px; height: 18px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.theme-switch input:checked + .theme-track::before { transform: translateX(20px); }
+.theme-icon { font-size: 16px; user-select: none; }
 
 /* ── Very small phones (≤ 400 px) ── */
 @media (max-width: 400px) {
