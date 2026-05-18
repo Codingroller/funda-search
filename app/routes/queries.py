@@ -246,10 +246,20 @@ async def query_toggle(request: Request, query_id: int, current_user: User = Dep
 
 
 @router.post("/queries/{query_id}/run", response_class=HTMLResponse)
-async def query_run(query_id: int, current_user: User = Depends(require_auth)):
+async def query_run(request: Request, query_id: int, current_user: User = Depends(require_auth)):
     async with AsyncSessionLocal() as db:
         _owned_or_404(await db.get(SavedQuery, query_id), current_user)
     await run_query_job(query_id)
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(RunLog).where(RunLog.query_id == query_id)
+            .order_by(RunLog.started_at.desc()).limit(1)
+        )
+        run = result.scalar_one_or_none()
+    # 0 new listings: quiet inline confirmation, no page refresh
+    if run and run.status == "ok" and run.new_count == 0:
+        return templates.TemplateResponse(request, "partials/run_result.html", {"run": run})
+    # New listings found or error: refresh so the status column and count update
     return HTMLResponse("", headers={"HX-Refresh": "true"})
 
 

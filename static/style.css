@@ -96,6 +96,7 @@ a:hover { text-decoration: underline; }
 .table .actions { white-space: nowrap; display: flex; gap: 6px; align-items: center; }
 .listings-row td { background: #f9fafb; padding: 12px 14px; }
 .run-inline { vertical-align: middle; }
+.run-last-search { font-size: 0.78rem; color: #6b7280; white-space: nowrap; }
 
 /* Badges */
 .badge {
