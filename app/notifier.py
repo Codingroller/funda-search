@@ -2,9 +2,10 @@ import asyncio
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 
 from pywebpush import webpush, WebPushException
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 
 from app.config import settings
 from app.db import AsyncSessionLocal
@@ -66,6 +67,7 @@ async def notify_user(
 
     loop = asyncio.get_running_loop()
     dead: list[str] = []
+    alive: list[str] = []
 
     for sub in rows:
         info = {
@@ -75,10 +77,19 @@ async def notify_user(
         status = await loop.run_in_executor(_pool, _send_one, info, payload)
         if status in (404, 410):
             dead.append(sub.endpoint)
+        elif status is None:
+            alive.append(sub.endpoint)
 
-    if dead:
-        async with AsyncSessionLocal() as db:
+    now = datetime.utcnow()
+    async with AsyncSessionLocal() as db:
+        if dead:
             await db.execute(
                 delete(PushSubscription).where(PushSubscription.endpoint.in_(dead))
             )
-            await db.commit()
+        if alive:
+            await db.execute(
+                update(PushSubscription)
+                .where(PushSubscription.endpoint.in_(alive))
+                .values(last_used_at=now)
+            )
+        await db.commit()

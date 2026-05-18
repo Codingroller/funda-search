@@ -25,6 +25,7 @@ class PushSubscription(Base):
     auth = Column(String, nullable=False)
     user_agent = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=True)
 
 
 class InviteToken(Base):

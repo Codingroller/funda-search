@@ -7,7 +7,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from sqlalchemy import delete, select
 
 from app.db import AsyncSessionLocal
-from app.models import SavedQuery, SeenListing, RunLog, User
+from app.models import PushSubscription, SavedQuery, SeenListing, RunLog, User
 
 log = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone="Europe/Amsterdam")
@@ -187,13 +187,25 @@ def remove_query_job(query_id: int) -> None:
 
 
 async def cleanup_old_data() -> None:
-    """Purge seen_listings and run_logs older than 90 days."""
-    cutoff = datetime.utcnow() - timedelta(days=90)
+    """Purge stale data: seen_listings/run_logs > 90 days, push_subscriptions unused > 1 year."""
+    now = datetime.utcnow()
+    cutoff_90d = now - timedelta(days=90)
+    cutoff_1y = now - timedelta(days=365)
     async with AsyncSessionLocal() as db:
-        await db.execute(delete(SeenListing).where(SeenListing.seen_at < cutoff))
-        await db.execute(delete(RunLog).where(RunLog.started_at < cutoff))
+        await db.execute(delete(SeenListing).where(SeenListing.seen_at < cutoff_90d))
+        await db.execute(delete(RunLog).where(RunLog.started_at < cutoff_90d))
+        # Prune push subscriptions not used for a year (fall back to created_at if never used)
+        await db.execute(
+            delete(PushSubscription).where(
+                (PushSubscription.last_used_at < cutoff_1y)
+                | (
+                    (PushSubscription.last_used_at == None)  # noqa: E711
+                    & (PushSubscription.created_at < cutoff_1y)
+                )
+            )
+        )
         await db.commit()
-    logging.getLogger(__name__).info("cleanup_old_data: purged records older than %s", cutoff.date())
+    logging.getLogger(__name__).info("cleanup_old_data: purged records older than 90d/1y")
 
 
 async def reconcile_jobs() -> None:
