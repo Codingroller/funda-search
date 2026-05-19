@@ -30,7 +30,7 @@ async def signup_get(request: Request, token: str):
     async with AsyncSessionLocal() as db:
         invite = await _get_valid_token(db, token)
     if not invite:
-        return _invalid(request, error="This invite link is invalid or has expired.")
+        return RedirectResponse("/", status_code=302)
     return templates.TemplateResponse(request, "signup.html", {"token": token, "error": None})
 
 
@@ -52,7 +52,7 @@ async def signup_post(
     async with AsyncSessionLocal() as db:
         invite = await _get_valid_token(db, token)
         if not invite:
-            return _invalid(request, error="This invite link is invalid or has expired.")
+            return RedirectResponse("/", status_code=302)
 
         existing = (await db.execute(select(User).where(User.username == username))).scalar_one_or_none()
         if existing:
