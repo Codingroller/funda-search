@@ -52,6 +52,16 @@ async def _run_migrations(conn) -> None:
         except Exception:
             pass  # column already exists
 
+    # Purge run_logs that predate their query's creation (orphans from missing
+    # FK cascade when foreign_keys PRAGMA was off on older installs).
+    try:
+        await conn.execute(text(
+            "DELETE FROM run_logs WHERE started_at < "
+            "(SELECT created_at FROM saved_queries WHERE id = run_logs.query_id)"
+        ))
+    except Exception:
+        pass
+
     # Backfill existing single-user data (silently ignored on fresh installs)
     for stmt, params in [
         ("UPDATE users SET username = :u WHERE username IS NULL", {"u": settings.admin_username}),
