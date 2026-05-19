@@ -616,7 +616,8 @@ async def test_signup_valid_token(authed):
 
 async def test_signup_invalid_token_rejected(anon):
     r = await anon.get("/signup/not-a-real-token")
-    assert r.status_code == 400
+    assert r.status_code == 302
+    assert r.headers["location"] == "/"
 
 
 async def test_signup_password_mismatch(authed):
