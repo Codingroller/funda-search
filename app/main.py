@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, text
 from starlette.middleware.sessions import SessionMiddleware
@@ -105,6 +105,33 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.exception_handler(UnauthenticatedException)
 async def unauth_handler(request: Request, _exc: UnauthenticatedException):
     return RedirectResponse("/login", status_code=302)
+
+
+def _error_response(request: Request, status_code: int, title: str, detail: str):
+    from app.templates_env import templates
+    try:
+        current_user = request.session.get("user_id")
+    except Exception:
+        current_user = None
+    return templates.TemplateResponse(
+        request,
+        "error.html",
+        {"status_code": status_code, "title": title, "detail": detail,
+         "current_user": current_user},
+        status_code=status_code,
+    )
+
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, _exc):
+    return _error_response(request, 404, "Page not found",
+                           "The page you're looking for doesn't exist.")
+
+
+@app.exception_handler(500)
+async def server_error_handler(request: Request, _exc):
+    return _error_response(request, 500, "Something went wrong",
+                           "An unexpected error occurred. Please try again.")
 
 
 @app.get("/healthz")

@@ -77,30 +77,9 @@ def _sync_search(params: dict) -> list[dict]:
         return [_listing_to_dict(l) for l in client.iter_search(max_pages=2, **params)]
 
 
-def _sync_autocomplete(value: str) -> list[dict]:
-    with Funda(timeout=10) as client:
-        suggestions = client.autocomplete(value)
-        result = []
-        for s in suggestions:
-            sid = getattr(s, "id", None)
-            label = None
-            for attr in ("label", "name", "title", "display_name", "value"):
-                label = getattr(s, attr, None)
-                if label:
-                    break
-            label = label or str(sid)
-            result.append({"id": str(sid), "label": str(label)})
-        return result
-
-
 async def search_listings(params: dict) -> list[dict]:
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_pool, _sync_search, params)
-
-
-async def autocomplete(value: str) -> list[dict]:
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_pool, _sync_autocomplete, value)
 
 
 def _listing_detail_to_dict(listing) -> dict:

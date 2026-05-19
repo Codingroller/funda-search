@@ -40,6 +40,12 @@ ENERGY_LABELS = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]
 RADIUS_OPTIONS = [1, 2, 5, 10, 15, 30, 50]
 
 
+_VALID_CATEGORIES = {"buy", "rent", "sold"}
+_VALID_SORTS = {"newest", "price_asc", "price_desc", "floor_area_desc"}
+_VALID_OBJECT_TYPES = {k for k, _ in OBJECT_TYPES}
+_VALID_INTERVAL_MINUTES = {m for m, _ in INTERVALS}
+
+
 def _build_params(
     location: str,
     category: str,
@@ -54,6 +60,13 @@ def _build_params(
     radius_km: Optional[int],
     sort: str,
 ) -> dict:
+    category = category if category in _VALID_CATEGORIES else "buy"
+    sort = sort if sort in _VALID_SORTS else "newest"
+    object_type = [t for t in object_type if t in _VALID_OBJECT_TYPES]
+    energy_label = [e for e in energy_label if e in ENERGY_LABELS]
+    if radius_km is not None and radius_km not in RADIUS_OPTIONS:
+        radius_km = None
+
     params: dict = {
         "location": [l.strip() for l in location.split(",") if l.strip()],
         "category": category,
@@ -127,6 +140,8 @@ async def query_create(
     sort: str = Form("newest"),
     interval_minutes: int = Form(60),
 ):
+    if interval_minutes not in _VALID_INTERVAL_MINUTES:
+        interval_minutes = 60
     form_data = await request.form()
     object_type = list(form_data.getlist("object_type"))
     energy_label = list(form_data.getlist("energy_label"))
@@ -187,6 +202,8 @@ async def query_update(
     sort: str = Form("newest"),
     interval_minutes: int = Form(60),
 ):
+    if interval_minutes not in _VALID_INTERVAL_MINUTES:
+        interval_minutes = 60
     form_data = await request.form()
     object_type = list(form_data.getlist("object_type"))
     energy_label = list(form_data.getlist("energy_label"))

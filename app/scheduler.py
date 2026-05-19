@@ -136,6 +136,13 @@ async def run_query_job(query_id: int) -> None:
                     q2.consecutive_errors = (q2.consecutive_errors or 0) + 1
                     q2.last_run_at = datetime.utcnow()
                     q2.last_run_status = "error"
+                    if q2.consecutive_errors >= 5:
+                        q2.enabled = False
+                        remove_query_job(query_id)
+                        log.warning(
+                            "Query %d disabled after %d consecutive errors",
+                            query_id, q2.consecutive_errors,
+                        )
                     db2.add(
                         RunLog(
                             query_id=query_id,

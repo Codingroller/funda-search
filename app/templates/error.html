@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ status_code }} — Funda Search{% endblock %}
+{% block content %}
+<div style="max-width:480px;margin:80px auto;text-align:center">
+  <div style="font-size:56px;font-weight:700;letter-spacing:-0.03em;color:var(--border-strong)">{{ status_code }}</div>
+  <h1 style="font-size:20px;font-weight:600;margin:12px 0 8px">{{ title }}</h1>
+  <p class="text-muted" style="margin-bottom:28px">{{ detail }}</p>
+  <a href="/" class="btn btn-primary">Go to dashboard</a>
+</div>
+{% endblock %}
