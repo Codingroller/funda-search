@@ -36,7 +36,7 @@
   color-scheme: dark;
 }
 /* Keep install banner always dark regardless of theme */
-[data-theme="dark"] #install-banner { background: oklch(0.28 0.01 250); }
+[data-theme="dark"] #install-banner { background: oklch(0.22 0.015 250); }
 
 /* ── Body override: use Inter and match BHSG's 14px base ── */
 body {
@@ -838,25 +838,69 @@ h2 { font-size: 16px; font-weight: 600; }
 .notif-prompt-text span  { font-size: 12.5px; color: var(--text-muted); }
 .notif-prompt-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
-/* ── Install banner ── */
+/* ── Install banner (bottom sheet) ── */
 #install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: #1c2333;
+  color: #fff;
+  border-radius: 16px 16px 0 0;
+  padding: 1.25rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
+  box-shadow: 0 -4px 32px rgba(0,0,0,0.35);
+  font-size: 0.875rem;
+}
+.ib-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.875rem;
+}
+.ib-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+#install-banner .btn-close {
+  background: none; border: none; color: #fff;
+  font-size: 1rem; cursor: pointer; padding: 0.25rem;
+  opacity: 0.6; line-height: 1;
+}
+#install-banner .btn-close:hover { opacity: 1; }
+.ib-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.ib-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  line-height: 1.5;
+}
+.ib-step-num {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-top: 0.05rem;
+}
+.ib-android {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.65rem 1rem;
-  background: var(--text);
-  color: #fff;
-  font-size: 0.8125rem;
   flex-wrap: wrap;
-  line-height: 1.5;
 }
-#install-banner span { flex: 1; }
-#install-banner .btn-close {
-  background: none; border: none; color: #fff;
-  font-size: 1rem; cursor: pointer; padding: 0 0.25rem;
-  opacity: 0.7; line-height: 1;
-}
-#install-banner .btn-close:hover { opacity: 1; }
 .ib-btn {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 0.2rem 0.65rem; font-size: 0.8rem;

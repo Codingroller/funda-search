@@ -50,23 +50,41 @@
     </div>
   </header>
 
-  <div id="install-banner" style="display:none" role="banner" aria-label="Install app">
+  <div id="install-banner" style="display:none" role="dialog" aria-label="Install app">
+    <div class="ib-header">
+      <span class="ib-title">Install Funda Search</span>
+      <button class="btn-close" onclick="dismissInstall()" aria-label="Dismiss">✕</button>
+    </div>
     <span id="install-ios-text">
-      <svg class="ib-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-      In Safari tap the <strong>Share</strong> button
-      <svg class="ib-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-      then <strong>Add to Home Screen</strong>
-      <svg class="ib-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="none"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      <ol class="ib-steps">
+        <li>
+          <span class="ib-step-num">1</span>
+          <span>Tap the <strong>Share</strong> <svg class="ib-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> button at the bottom of Safari</span>
+        </li>
+        <li>
+          <span class="ib-step-num">2</span>
+          <span>Scroll down in the menu</span>
+        </li>
+        <li>
+          <span class="ib-step-num">3</span>
+          <span>Tap <strong>More</strong> if "Add to Home Screen" isn't visible yet</span>
+        </li>
+        <li>
+          <span class="ib-step-num">4</span>
+          <span>Tap <strong>Add to Home Screen</strong> <svg class="ib-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" fill="none"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
+        </li>
+      </ol>
     </span>
     <span id="install-android-text" style="display:none">
-      <svg class="ib-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="8 6 12 2 16 6"/><line x1="12" y1="2" x2="12" y2="15"/><path d="M20 16v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4"/></svg>
-      Add <strong>Funda Search</strong> to your home screen for push notifications
-      <button class="btn btn-sm ib-btn" id="install-android-btn" onclick="doInstall()">
-        <svg class="ib-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Install
-      </button>
+      <div class="ib-android">
+        <svg class="ib-icon" viewBox="0 0 24 24" aria-hidden="true"><polyline points="8 6 12 2 16 6"/><line x1="12" y1="2" x2="12" y2="15"/><path d="M20 16v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4"/></svg>
+        Add <strong>Funda Search</strong> to your home screen for push notifications
+        <button class="btn btn-sm ib-btn" id="install-android-btn" onclick="doInstall()">
+          <svg class="ib-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Install
+        </button>
+      </div>
     </span>
-    <button class="btn-close" onclick="dismissInstall()" aria-label="Dismiss">✕</button>
   </div>
 
   <main class="container">
