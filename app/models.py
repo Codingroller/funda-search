@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Float, Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Float, Index, Integer, String, Boolean, DateTime, ForeignKey, Text
 from app.db import Base
 
 
@@ -34,7 +34,7 @@ class InviteToken(Base):
     token = Column(String, primary_key=True)
     created_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    expires_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
     used_at = Column(DateTime, nullable=True)
     used_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
@@ -43,7 +43,8 @@ class SavedQuery(Base):
     __tablename__ = "saved_queries"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
+                     nullable=False, index=True)
     name = Column(String, nullable=False)
     params_json = Column(Text, nullable=False)
     interval_minutes = Column(Integer, default=60)
@@ -68,9 +69,12 @@ class SeenListing(Base):
 
 class RunLog(Base):
     __tablename__ = "run_logs"
+    __table_args__ = (
+        Index("ix_run_logs_query_started", "query_id", "started_at"),
+    )
 
     id = Column(Integer, primary_key=True)
-    query_id = Column(Integer, ForeignKey("saved_queries.id", ondelete="CASCADE"))
+    query_id = Column(Integer, ForeignKey("saved_queries.id", ondelete="CASCADE"), index=True)
     started_at = Column(DateTime, nullable=False)
     finished_at = Column(DateTime, nullable=True)
     status = Column(String)
@@ -120,10 +124,15 @@ class ListingCache(Base):
 
 class SharingConnection(Base):
     __tablename__ = "sharing_connections"
+    __table_args__ = (
+        Index("ix_sharing_from_to_status", "from_user_id", "to_user_id", "status"),
+    )
 
     id           = Column(Integer, primary_key=True)
-    from_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    to_user_id   = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    from_user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
+                          nullable=False, index=True)
+    to_user_id   = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
+                          nullable=False, index=True)
     status       = Column(String, default="pending")  # pending | accepted | declined
     created_at   = Column(DateTime, default=datetime.utcnow)
     responded_at = Column(DateTime, nullable=True)

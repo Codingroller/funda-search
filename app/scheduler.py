@@ -192,7 +192,7 @@ async def cleanup_old_data() -> None:
     cutoff_90d = now - timedelta(days=90)
     cutoff_1y = now - timedelta(days=365)
     async with AsyncSessionLocal() as db:
-        await db.execute(delete(SeenListing).where(SeenListing.seen_at < cutoff_90d))
+        await db.execute(delete(SeenListing).where(SeenListing.first_seen_at < cutoff_90d))
         await db.execute(delete(RunLog).where(RunLog.started_at < cutoff_90d))
         # Prune push subscriptions not used for a year (fall back to created_at if never used)
         await db.execute(

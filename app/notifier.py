@@ -66,19 +66,18 @@ async def notify_user(
     })
 
     loop = asyncio.get_running_loop()
-    dead: list[str] = []
-    alive: list[str] = []
+    infos = [
+        {"endpoint": sub.endpoint, "keys": {"p256dh": sub.p256dh, "auth": sub.auth}}
+        for sub in rows
+    ]
 
-    for sub in rows:
-        info = {
-            "endpoint": sub.endpoint,
-            "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
-        }
-        status = await loop.run_in_executor(_pool, _send_one, info, payload)
-        if status in (404, 410):
-            dead.append(sub.endpoint)
-        elif status is None:
-            alive.append(sub.endpoint)
+    # Send to all subscriptions concurrently
+    statuses = await asyncio.gather(
+        *[loop.run_in_executor(_pool, _send_one, info, payload) for info in infos]
+    )
+
+    dead = [rows[i].endpoint for i, s in enumerate(statuses) if s in (404, 410)]
+    alive = [rows[i].endpoint for i, s in enumerate(statuses) if s is None]
 
     now = datetime.utcnow()
     async with AsyncSessionLocal() as db:

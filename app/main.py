@@ -39,6 +39,13 @@ async def _run_migrations(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_push_subscriptions_user_id ON push_subscriptions(user_id)",
         "ALTER TABLE run_logs ADD COLUMN all_listings_json TEXT NOT NULL DEFAULT '[]'",
         "ALTER TABLE push_subscriptions ADD COLUMN last_used_at DATETIME",
+        # Indexes added in architectural review 2026-05-19
+        "CREATE INDEX IF NOT EXISTS ix_saved_queries_user_id ON saved_queries(user_id)",
+        "CREATE INDEX IF NOT EXISTS ix_run_logs_query_id ON run_logs(query_id)",
+        "CREATE INDEX IF NOT EXISTS ix_run_logs_query_started ON run_logs(query_id, started_at)",
+        "CREATE INDEX IF NOT EXISTS ix_sharing_from_user ON sharing_connections(from_user_id)",
+        "CREATE INDEX IF NOT EXISTS ix_sharing_to_user ON sharing_connections(to_user_id)",
+        "CREATE INDEX IF NOT EXISTS ix_invite_expires ON invite_tokens(expires_at)",
     ]:
         try:
             await conn.execute(text(stmt))
@@ -121,7 +128,11 @@ async def serve_image(filename: str):
     path = Path(settings.db_path).parent / "images" / filename
     if not path.exists():
         raise HTTPException(404)
-    return FileResponse(str(path), media_type="image/jpeg")
+    return FileResponse(
+        str(path),
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=2592000, immutable"},
+    )
 
 
 # Routers
