@@ -109,8 +109,8 @@ async def run_query_job(query_id: int) -> None:
                     status="ok",
                     result_count=len(listings),
                     new_count=len(new_listings),
-                    new_listings_json=json.dumps(new_listings[:30]),
-                    all_listings_json=json.dumps(listings[:30]),
+                    new_listings_json=json.dumps(new_listings),
+                    all_listings_json=json.dumps(listings),
                 )
             )
 
