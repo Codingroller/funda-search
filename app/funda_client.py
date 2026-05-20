@@ -81,7 +81,7 @@ async def search_listings(params: dict) -> list[dict]:
     loop = asyncio.get_running_loop()
     return await asyncio.wait_for(
         loop.run_in_executor(_pool, _sync_search, params),
-        timeout=120,
+        timeout=600,
     )
 
 
