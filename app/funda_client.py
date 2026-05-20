@@ -74,7 +74,7 @@ def _listing_to_dict(listing) -> dict:
 
 def _sync_search(params: dict) -> list[dict]:
     with Funda(timeout=30, max_retries=5, retry_backoff=0.1) as client:
-        return [_listing_to_dict(l) for l in client.iter_search(max_pages=2, **params)]
+        return [_listing_to_dict(l) for l in client.iter_search(max_pages=3, **params)]
 
 
 async def search_listings(params: dict) -> list[dict]:
