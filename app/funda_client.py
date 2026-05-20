@@ -79,7 +79,10 @@ def _sync_search(params: dict) -> list[dict]:
 
 async def search_listings(params: dict) -> list[dict]:
     loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_pool, _sync_search, params)
+    return await asyncio.wait_for(
+        loop.run_in_executor(_pool, _sync_search, params),
+        timeout=120,
+    )
 
 
 def _listing_detail_to_dict(listing) -> dict:
@@ -170,7 +173,10 @@ async def get_listing_detail(global_id: str) -> dict:
             return json.loads(row.payload_json)
 
     loop = asyncio.get_running_loop()
-    payload = await loop.run_in_executor(_pool, _sync_listing_detail, global_id)
+    payload = await asyncio.wait_for(
+        loop.run_in_executor(_pool, _sync_listing_detail, global_id),
+        timeout=60,
+    )
 
     async with AsyncSessionLocal() as db:
         now = datetime.utcnow()
