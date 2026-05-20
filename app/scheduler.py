@@ -124,7 +124,7 @@ async def run_query_job(query_id: int) -> None:
             # load instantly for the user. Fire-and-forget: does not block
             # the scheduler job and always yields priority to user requests.
             if new_listings:
-                asyncio.create_task(_precache_new_listings(new_listings[:30]))
+                asyncio.create_task(_precache_new_listings(new_listings))
 
         except Exception as exc:
             await db.rollback()
