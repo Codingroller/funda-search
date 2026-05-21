@@ -117,7 +117,7 @@ def fit(rows: list[dict], weights: list[float]) -> FittedModel:
     X_rows = []
     for f in feats:
         X_rows.append([
-            (f.get(fname, means[fname]) - means[fname]) / stds[fname]
+            ((f[fname] if f[fname] is not None else means[fname]) - means[fname]) / stds[fname]
             for fname in feature_used
         ])
 
