@@ -158,6 +158,52 @@ async def service_worker():
     )
 
 
+@app.get("/share/{global_id}", include_in_schema=False)
+async def share_listing(global_id: str, request: Request):
+    """Public OG-tag page for WhatsApp/social link previews.
+
+    WhatsApp's crawler reads the meta tags; real users are immediately
+    redirected to /listings/{global_id} by the meta-refresh + JS.
+    """
+    import json as _json
+    from app.models import ListingCache
+    listing = None
+    try:
+        async with AsyncSessionLocal() as db:
+            row = await db.get(ListingCache, global_id)
+            if row:
+                listing = _json.loads(row.payload_json)
+    except Exception:
+        pass
+
+    share_url = str(request.base_url).rstrip("/") + f"/share/{global_id}"
+    dest_url  = f"/listings/{global_id}"
+
+    title = (listing or {}).get("title") or "Listing on Funda"
+    price = (listing or {}).get("price") or ""
+    area  = (listing or {}).get("living_area")
+    city  = (listing or {}).get("city") or ""
+    desc_parts = [p for p in [price, f"{area} m²" if area else None, city] if p]
+    description = " · ".join(desc_parts)
+
+    photos = (listing or {}).get("photos") or []
+    image_url = ""
+    if photos:
+        p = photos[0]
+        image_url = p if p.startswith("http") else str(request.base_url).rstrip("/") + p
+
+    html = f"""<!doctype html><html><head>
+<meta charset="UTF-8">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{share_url}">
+<meta property="og:title" content="{title}">
+<meta property="og:description" content="{description}">
+{"<meta property='og:image' content='" + image_url + "'>" if image_url else ""}
+<meta http-equiv="refresh" content="0;url={dest_url}">
+</head><body><script>location.replace('{dest_url}')</script></body></html>"""
+    return HTMLResponse(html)
+
+
 @app.get("/img/{filename}")
 async def serve_image(filename: str):
     if "/" in filename or "\\" in filename or filename.startswith("."):
