@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 {% block title %}{{ listing.title or listing.global_id }} — Funda Search{% endblock %}
+{% block head %}
+{% set _og_url = request.base_url ~ 'listings/' ~ listing.global_id %}
+<meta property="og:type"        content="website">
+<meta property="og:url"         content="{{ _og_url }}">
+<meta property="og:title"       content="{{ listing.title or 'Listing' }}">
+<meta property="og:description" content="{{ (listing.price or '') ~ ((' · ' ~ listing.living_area ~ ' m²') if listing.living_area else '') ~ ((' · ' ~ listing.city) if listing.city else '') }}">
+{% if listing.photos %}{% set _p = listing.photos[0] %}<meta property="og:image" content="{{ _p if _p.startswith('http') else (request.base_url | string) ~ _p[1:] }}">{% endif %}
+{% endblock %}
 {% block content %}
 
 {# ── Header ── #}
