@@ -39,6 +39,7 @@ async def _run_migrations(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_push_subscriptions_user_id ON push_subscriptions(user_id)",
         "ALTER TABLE run_logs ADD COLUMN all_listings_json TEXT NOT NULL DEFAULT '[]'",
         "ALTER TABLE push_subscriptions ADD COLUMN last_used_at DATETIME",
+        "ALTER TABLE liked_listings ADD COLUMN walter_living_bid INTEGER",
         # Indexes added in architectural review 2026-05-19
         "CREATE INDEX IF NOT EXISTS ix_saved_queries_user_id ON saved_queries(user_id)",
         "CREATE INDEX IF NOT EXISTS ix_run_logs_query_id ON run_logs(query_id)",

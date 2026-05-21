@@ -189,6 +189,8 @@ async def save_checklist(
     form_data = await request.form()
     agent_contacted = form_data.get("agent_contacted", "0") == "1"
     viewing_date = form_data.get("viewing_date", "").strip() or None
+    wlb_raw = form_data.get("walter_living_bid", "").strip()
+    walter_living_bid = int(wlb_raw) if wlb_raw.isdigit() else None
     bid_raw = form_data.get("bid_amount", "").strip()
     bid_amount = int(bid_raw) if bid_raw.isdigit() else None
 
@@ -203,6 +205,7 @@ async def save_checklist(
         if row:
             row.agent_contacted = agent_contacted
             row.viewing_date = viewing_date
+            row.walter_living_bid = walter_living_bid
             row.bid_amount = bid_amount
             await db.commit()
     return HTMLResponse("")
@@ -246,6 +249,8 @@ async def collab_save_checklist(
     form_data = await request.form()
     agent_contacted = form_data.get("agent_contacted", "0") == "1"
     viewing_date = form_data.get("viewing_date", "").strip() or None
+    wlb_raw = form_data.get("walter_living_bid", "").strip()
+    walter_living_bid = int(wlb_raw) if wlb_raw.isdigit() else None
     bid_raw = form_data.get("bid_amount", "").strip()
     bid_amount = int(bid_raw) if bid_raw.isdigit() else None
 
@@ -262,6 +267,7 @@ async def collab_save_checklist(
         if row:
             row.agent_contacted = agent_contacted
             row.viewing_date = viewing_date
+            row.walter_living_bid = walter_living_bid
             row.bid_amount = bid_amount
             await db.commit()
     return HTMLResponse("")
@@ -403,6 +409,7 @@ async def liked_page(request: Request, current_user: User = Depends(require_auth
             "notes": ll.notes or "",
             "agent_contacted": ll.agent_contacted,
             "viewing_date": ll.viewing_date or "",
+            "walter_living_bid": ll.walter_living_bid,
             "bid_amount": ll.bid_amount,
             "liked_at": ll.liked_at,
             "global_id": ll.global_id,

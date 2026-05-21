@@ -86,6 +86,7 @@
     <div class="liked-checklist">
       <input type="hidden" name="agent_contacted" value="0">
       <input type="hidden" name="viewing_date" value="">
+      <input type="hidden" name="walter_living_bid" value="">
       <input type="hidden" name="bid_amount" value="">
 
       <div class="liked-check-item">
@@ -117,6 +118,26 @@
           hx-trigger="change delay:300ms"
           hx-swap="none"
         >
+      </div>
+
+      <div class="liked-check-item">
+        <label class="liked-check-label" for="wlb-{{ gid }}">Walter living bid</label>
+        <div class="liked-bid-wrap">
+          <span class="liked-bid-prefix">€</span>
+          <input
+            type="number"
+            id="wlb-{{ gid }}"
+            name="walter_living_bid"
+            value="{{ item.walter_living_bid or '' }}"
+            placeholder="0"
+            min="0"
+            step="1000"
+            hx-post="{{ checklist_url }}"
+            hx-include="closest .liked-checklist"
+            hx-trigger="change delay:600ms"
+            hx-swap="none"
+          >
+        </div>
       </div>
 
       <div class="liked-check-item">
