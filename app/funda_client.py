@@ -16,6 +16,14 @@ from app.models import ListingCache
 _pool = ThreadPoolExecutor(max_workers=4)
 _LISTING_TTL = timedelta(hours=24)
 
+_ENERGY_LABEL_MAP = {"A1": "A+", "A2": "A++", "A3": "A+++"}
+
+
+def _fmt_energy_label(raw) -> str | None:
+    if raw is None:
+        return None
+    return _ENERGY_LABEL_MAP.get(str(raw), str(raw))
+
 
 def _fmt_price_per_m2(amount: int | None, area: int | None) -> str | None:
     if not amount or not area:
@@ -56,18 +64,22 @@ def _listing_to_dict(listing) -> dict:
 
     pub_date = getattr(listing, "publication_date", None)
 
+    pd = getattr(listing, "property_details", None)
     return {
         "global_id": str(listing.global_id),
         "url": listing.url,
         "title": listing.title,
         "city": listing.city,
+        "postcode": getattr(listing, "postcode", None),
         "price": price,
         "price_amount": price_amount,
         "price_per_m2": _fmt_price_per_m2(price_amount, getattr(listing, "living_area", None)),
         "living_area": getattr(listing, "living_area", None),
+        "plot_area": getattr(listing, "plot_area", None),
         "rooms_count": getattr(listing, "rooms_count", None),
         "bedrooms": getattr(listing, "bedrooms", None),
-        "energy_label": getattr(listing, "energy_label", None),
+        "energy_label": _fmt_energy_label(getattr(listing, "energy_label", None)),
+        "object_type": getattr(pd, "object_type", None) if pd else None,
         "photo_url": photo_url,
         "publication_date": pub_date if isinstance(pub_date, str) else (pub_date.isoformat() if pub_date else None),
     }
@@ -152,7 +164,7 @@ def _listing_detail_to_dict(listing) -> dict:
         "plot_area": getattr(listing, "plot_area", None),
         "rooms_count": getattr(listing, "rooms_count", None),
         "bedrooms": getattr(listing, "bedrooms", None),
-        "energy_label": getattr(listing, "energy_label", None),
+        "energy_label": _fmt_energy_label(getattr(listing, "energy_label", None)),
         "object_type": getattr(pd, "object_type", None) if pd else None,
         "house_type": getattr(pd, "house_type", None) if pd else None,
         "construction_year": getattr(pd, "construction_year", None) if pd else None,
@@ -170,12 +182,13 @@ def _sync_listing_detail(global_id: str) -> dict:
     return _listing_detail_to_dict(listing)
 
 
-async def get_listing_detail(global_id: str) -> dict:
+async def get_listing_detail(global_id: str, force_refresh: bool = False) -> dict:
     """Fetch full listing detail; check ListingCache first (24 h TTL)."""
-    async with AsyncSessionLocal() as db:
-        row = await db.get(ListingCache, global_id)
-        if row and (datetime.utcnow() - row.fetched_at) < _LISTING_TTL:
-            return json.loads(row.payload_json)
+    if not force_refresh:
+        async with AsyncSessionLocal() as db:
+            row = await db.get(ListingCache, global_id)
+            if row and (datetime.utcnow() - row.fetched_at) < _LISTING_TTL:
+                return json.loads(row.payload_json)
 
     loop = asyncio.get_running_loop()
     payload = await asyncio.wait_for(

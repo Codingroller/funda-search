@@ -40,6 +40,14 @@ async def _run_migrations(conn) -> None:
         "ALTER TABLE run_logs ADD COLUMN all_listings_json TEXT NOT NULL DEFAULT '[]'",
         "ALTER TABLE push_subscriptions ADD COLUMN last_used_at DATETIME",
         "ALTER TABLE liked_listings ADD COLUMN walter_living_bid INTEGER",
+        "ALTER TABLE liked_listings ADD COLUMN listing_status TEXT",
+        # bid_estimates v2.0 columns
+        "ALTER TABLE bid_estimates ADD COLUMN model_version TEXT",
+        "ALTER TABLE bid_estimates ADD COLUMN tier TEXT",
+        "ALTER TABLE bid_estimates ADD COLUMN n_active INTEGER",
+        "ALTER TABLE bid_estimates ADD COLUMN n_sold INTEGER",
+        "ALTER TABLE bid_estimates ADD COLUMN r2 REAL",
+        "ALTER TABLE bid_estimates ADD COLUMN residual_std REAL",
         # Indexes added in architectural review 2026-05-19
         "CREATE INDEX IF NOT EXISTS ix_saved_queries_user_id ON saved_queries(user_id)",
         "CREATE INDEX IF NOT EXISTS ix_run_logs_query_id ON run_logs(query_id)",
@@ -98,10 +106,15 @@ async def lifespan(app: FastAPI):
             ))
             await db.commit()
 
+    from app.listing_status_checker import check_liked_listing_statuses
+
     scheduler.start()
     await reconcile_jobs()
     scheduler.add_job(cleanup_old_data, "interval", hours=24, id="cleanup_old_data",
                       replace_existing=True)
+    scheduler.add_job(check_liked_listing_statuses, "interval", hours=1,
+                      id="check_listing_statuses", replace_existing=True,
+                      max_instances=1, coalesce=True)
 
     yield
 

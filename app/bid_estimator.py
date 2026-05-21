@@ -1,35 +1,39 @@
-import asyncio
+"""Bid estimate orchestrator.
+
+Coordinates async I/O (comp fetch, DB upsert, cache), delegates all
+numerics to bid_model, bid_comps, and bid_explain.
+"""
+from __future__ import annotations
+
 import json
 import logging
-import statistics
-from datetime import date, datetime, timedelta
+import math
+from datetime import datetime, timedelta
 
-from app.cbs_client import get_neighbourhood_stats
+from app.bid_comps import gather_cohort
+from app.bid_explain import build_explanation
+from app.bid_model import (
+    CURRENT_MODEL_VERSION,
+    FittedModel,
+    _energy_rank,           # re-exported so existing importers don't break
+    confidence_level,
+    fit,
+    predict,
+)
 from app.db import AsyncSessionLocal
-from app.funda_client import get_listing_detail, search_listings
+from app.funda_client import get_listing_detail
 from app.models import BidEstimate
 
 logger = logging.getLogger(__name__)
 
 _BID_TTL = timedelta(days=7)
-_computing: set[str] = set()  # global_ids currently being computed
-_NATIONAL_AVG_WOZ_K = 320  # thousands €, approximate 2025 national average
-
-_ENERGY_ORDER = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]
-_ENERGY_DELTA_ABS = {
-    "A+++": 3, "A++": 3, "A+": 3, "A": 3,
-    "B": 1, "C": 0, "D": -2,
-    "E": -5, "F": -5, "G": -5,
-}
+_computing: set[str] = set()   # global_ids currently being computed
+_DECAY_DAYS = 547.5            # 1.5-year decay constant for sold comps
 
 
-def _energy_rank(label: str | None) -> int:
-    if not label:
-        return 5
-    try:
-        return _ENERGY_ORDER.index(label)
-    except ValueError:
-        return 5
+def _is_sold(subject: dict) -> bool:
+    labels = subject.get("labels") or []
+    return any("verkocht" in str(lb).lower() for lb in labels)
 
 
 def _fmt_eur(amount: int | None) -> str:
@@ -38,197 +42,38 @@ def _fmt_eur(amount: int | None) -> str:
     return f"€ {amount:,}".replace(",", ".")
 
 
-def _comparables_params(subject: dict) -> dict:
-    params: dict = {
-        "location": [subject["city"]],
-        "category": "buy",
-        "sort": "newest",
-        "max_pages": 2,
-    }
-    area = subject.get("living_area")
-    if area:
-        params["min_area"] = int(area * 0.75)
-        params["max_area"] = int(area * 1.25)
-    obj_type = subject.get("object_type")
-    if obj_type:
-        params["object_type"] = [obj_type]
-    return params
-
-
-def _filter_comps(subject: dict, comps: list[dict]) -> list[dict]:
-    return [
-        c for c in comps
-        if c.get("global_id") != subject.get("global_id")
-        and c.get("living_area")
-        and c.get("price_amount")
-    ][:30]
-
-
-def _compute(subject: dict, comps: list[dict], cbs_stats: dict | None) -> dict:
-    if not subject.get("living_area"):
-        return {"confidence": "unavailable"}
-
-    if len(comps) < 3:
-        confidence = "low"
-        band = 0.08
-    else:
-        confidence = "normal"
-        band = 0.04
-
-    if not comps:
-        asking = subject.get("price_amount")
-        if not asking:
-            return {"confidence": "unavailable"}
-        recommended = round(asking / 100) * 100
-        return {
-            "low": round(recommended * 0.95 / 100) * 100,
-            "recommended": recommended,
-            "high": round(recommended * 1.05 / 100) * 100,
-            "adjustments": [{"label": "No comparables found", "delta_pct": 0,
-                             "note": "Estimate based on asking price ±5% — no comparable listings found"}],
-            "confidence": "low",
-            "median_ppm": None,
-            "comparables_count": 0,
-        }
-
-    ppms = [c["price_amount"] / c["living_area"] for c in comps]
-    median_ppm = statistics.median(ppms)
-    baseline = median_ppm * subject["living_area"]
-
-    adjustments = []
-    total_delta = 0.0
-
-    # Energy label
-    subj_label = subject.get("energy_label")
-    comp_labels = [c.get("energy_label") for c in comps if c.get("energy_label")]
-    if subj_label and comp_labels:
-        ranks = sorted(_energy_rank(l) for l in comp_labels)
-        median_rank = ranks[len(ranks) // 2]
-        subj_rank = _energy_rank(subj_label)
-        delta = max(-5, min(5, round((median_rank - subj_rank) * 1.5)))
-        if delta != 0:
-            total_delta += delta
-            sign = "+" if delta > 0 else ""
-            adjustments.append({
-                "label": f"Energy label {subj_label}",
-                "delta_pct": delta,
-                "note": f"{sign}{delta}% vs. comparable average (your label: {subj_label})",
-            })
-    elif subj_label:
-        delta = _ENERGY_DELTA_ABS.get(subj_label, 0)
-        if delta != 0:
-            total_delta += delta
-            sign = "+" if delta > 0 else ""
-            adjustments.append({
-                "label": f"Energy label {subj_label}",
-                "delta_pct": delta,
-                "note": f"{sign}{delta}% for energy label {subj_label}",
-            })
-
-    # Construction year
-    year = subject.get("construction_year")
-    if year:
-        try:
-            y = int(year)
-            if y > 2010:
-                year_delta, year_note = 3, f"+3% for recent construction (built {y})"
-            elif y >= 1990:
-                year_delta, year_note = 1, f"+1% for post-1990 construction (built {y})"
-            elif y >= 1945:
-                year_delta, year_note = 0, None
-            else:
-                year_delta, year_note = -2, f"-2% for pre-1945 construction (built {y})"
-            if year_delta != 0:
-                total_delta += year_delta
-                adjustments.append({
-                    "label": f"Construction year ({y})",
-                    "delta_pct": year_delta,
-                    "note": year_note,
-                })
-        except (ValueError, TypeError):
-            pass
-
-    # Plot area scarcity
-    obj_type = str(subject.get("object_type") or "").lower()
-    if subject.get("plot_area") and "apartment" not in obj_type:
-        comp_plots = [c.get("plot_area") for c in comps]
-        has_plot_ratio = sum(1 for p in comp_plots if p) / len(comp_plots)
-        if has_plot_ratio < 0.3:
-            total_delta += 2
-            adjustments.append({
-                "label": "Garden / plot area",
-                "delta_pct": 2,
-                "note": "+2% — fewer than 30% of comparables have a plot (plot scarcity in this area)",
-            })
-
-    # CBS neighbourhood wealth
-    if cbs_stats:
-        woz_k = ((cbs_stats.get("buurt") or {}).get("housing") or {}).get("woz_value_k")
-        if woz_k:
-            if woz_k > _NATIONAL_AVG_WOZ_K * 1.3:
-                total_delta += 2
-                adjustments.append({
-                    "label": "Neighbourhood wealth",
-                    "delta_pct": 2,
-                    "note": f"+2% — avg. WOZ value in this buurt is {_fmt_eur(int(woz_k * 1000))} (above average)",
-                })
-            elif woz_k < _NATIONAL_AVG_WOZ_K * 0.7:
-                total_delta -= 2
-                adjustments.append({
-                    "label": "Neighbourhood wealth",
-                    "delta_pct": -2,
-                    "note": f"-2% — avg. WOZ value in this buurt is {_fmt_eur(int(woz_k * 1000))} (below average)",
-                })
-
-    # Market heat (recency proxy)
-    cutoff = datetime.utcnow() - timedelta(days=30)
-    recent_count = 0
-    for c in comps:
-        pub = c.get("publication_date")
-        if pub:
-            try:
-                pub_dt = datetime.fromisoformat(pub[:10])
-                if pub_dt >= cutoff:
-                    recent_count += 1
-            except (ValueError, TypeError):
-                pass
-
-    market_heat_factor = 1.0
-    recent_ratio = recent_count / len(comps)
-    if recent_ratio > 0.6:
-        market_heat_factor = 1.02
-        adjustments.append({
-            "label": "Market activity",
-            "delta_pct": 2,
-            "note": f"+2% — {recent_count}/{len(comps)} comparables listed in last 30 days (active market)",
-        })
-    elif recent_ratio < 0.2:
-        market_heat_factor = 0.98
-        adjustments.append({
-            "label": "Market activity",
-            "delta_pct": -2,
-            "note": f"-2% — only {recent_count}/{len(comps)} comparables listed recently (slow market)",
-        })
-
-    adjusted = baseline * (1 + total_delta / 100) * market_heat_factor
-    recommended = round(adjusted / 100) * 100
-    low = round(recommended * (1 - band) / 100) * 100
-    high = round(recommended * (1 + band) / 100) * 100
-
-    return {
-        "low": int(low),
-        "recommended": int(recommended),
-        "high": int(high),
-        "adjustments": adjustments,
-        "confidence": confidence,
-        "median_ppm": round(median_ppm),
-        "comparables_count": len(comps),
-    }
-
-
-async def _upsert(db, global_id: str, asking_price, low, recommended, high,
-                  comparables_count, median_ppm, confidence, adjustments_json: str) -> None:
+def _weights_for_cohort(cohort) -> list[float]:
     now = datetime.utcnow()
+    ws: list[float] = [1.0] * len(cohort.active)
+    for c in cohort.sold:
+        pub = c.get("publication_date")
+        try:
+            delta = (now - datetime.fromisoformat(pub[:10])).days
+            ws.append(math.exp(-delta / _DECAY_DAYS))
+        except Exception:
+            ws.append(1.0)
+    return ws
+
+
+async def _upsert(
+    db,
+    global_id: str,
+    asking_price,
+    low: int,
+    recommended: int,
+    high: int,
+    n_active: int,
+    n_sold: int,
+    median_ppm,
+    confidence: str,
+    adjustments_json: str,
+    model_version: str | None,
+    tier: str | None,
+    r2: float | None,
+    residual_std: float | None,
+) -> None:
+    now = datetime.utcnow()
+    comparables_count = n_active + n_sold
     row = await db.get(BidEstimate, global_id)
     if row:
         row.asking_price = asking_price
@@ -240,6 +85,12 @@ async def _upsert(db, global_id: str, asking_price, low, recommended, high,
         row.confidence = confidence
         row.adjustments_json = adjustments_json
         row.computed_at = now
+        row.model_version = model_version
+        row.tier = tier
+        row.n_active = n_active
+        row.n_sold = n_sold
+        row.r2 = r2
+        row.residual_std = residual_std
     else:
         db.add(BidEstimate(
             global_id=global_id,
@@ -252,13 +103,14 @@ async def _upsert(db, global_id: str, asking_price, low, recommended, high,
             confidence=confidence,
             adjustments_json=adjustments_json,
             computed_at=now,
+            model_version=model_version,
+            tier=tier,
+            n_active=n_active,
+            n_sold=n_sold,
+            r2=r2,
+            residual_std=residual_std,
         ))
     await db.commit()
-
-
-def _is_sold(subject: dict) -> bool:
-    labels = subject.get("labels") or []
-    return any("verkocht" in str(lb).lower() for lb in labels)
 
 
 async def compute_bid_estimate(global_id: str) -> None:
@@ -273,40 +125,56 @@ async def compute_bid_estimate(global_id: str) -> None:
 
         if subject.get("is_auction") or _is_sold(subject):
             async with AsyncSessionLocal() as db:
-                await _upsert(db, global_id, subject.get("price_amount"), 0, 0, 0, 0, None, "unavailable", "[]")
+                await _upsert(db, global_id, subject.get("price_amount"),
+                              0, 0, 0, 0, 0, None, "unavailable", "[]",
+                              CURRENT_MODEL_VERSION, None, None, None)
             return
 
-        comps_params = _comparables_params(subject)
-        comps = await search_listings(comps_params)
-        comps = _filter_comps(subject, comps)
+        cohort = await gather_cohort(subject)
+        all_rows = cohort.active + cohort.sold
+        weights = _weights_for_cohort(cohort)
 
-        cbs_stats = None
-        identifier = subject.get("neighbourhood_identifier")
-        if identifier and str(identifier).upper().startswith("BU"):
-            try:
-                cbs_stats = await get_neighbourhood_stats(identifier)
-            except Exception:
-                pass
+        model: FittedModel = fit(all_rows, weights)
+        low, recommended, high = predict(model, subject)
 
-        result = _compute(subject, comps, cbs_stats)
+        if recommended == 0:
+            # No usable comparables and no median_ppm — fall back to asking price
+            asking = subject.get("price_amount")
+            if not asking:
+                async with AsyncSessionLocal() as db:
+                    await _upsert(db, global_id, None, 0, 0, 0, 0, 0, None,
+                                  "unavailable", "[]", CURRENT_MODEL_VERSION, None, None, None)
+                return
+            recommended = round(asking / 100) * 100
+            low = round(recommended * 0.95 / 100) * 100
+            high = round(recommended * 1.05 / 100) * 100
+            adjustments = [{"label": "No comparables found", "delta_pct": 0,
+                            "note": "Estimate based on asking price ±5% — no comparable listings found"}]
+        else:
+            adjustments = build_explanation(model, subject, cohort, recommended)
 
-        if result.get("confidence") == "unavailable":
-            async with AsyncSessionLocal() as db:
-                await _upsert(db, global_id, subject.get("price_amount"), 0, 0, 0, 0, None, "unavailable", "[]")
-            return
+        confidence = confidence_level(model)
 
         async with AsyncSessionLocal() as db:
             await _upsert(
                 db, global_id,
                 subject.get("price_amount"),
-                result["low"], result["recommended"], result["high"],
-                result["comparables_count"], result.get("median_ppm"),
-                result["confidence"],
-                json.dumps(result["adjustments"]),
+                low, recommended, high,
+                len(cohort.active), len(cohort.sold),
+                round(model.median_ppm) if model.median_ppm else None,
+                confidence,
+                json.dumps(adjustments),
+                CURRENT_MODEL_VERSION,
+                cohort.tier,
+                round(model.r2, 4) if not model.fallback else None,
+                round(model.residual_std, 4) if not model.fallback else None,
             )
 
-        logger.info("bid estimate %s: recommended=%d confidence=%s n_comps=%d",
-                    global_id, result["recommended"], result["confidence"], result["comparables_count"])
+        logger.info(
+            "bid estimate %s: recommended=%d confidence=%s n_comps=%d tier=%s",
+            global_id, recommended, confidence,
+            len(cohort.active) + len(cohort.sold), cohort.tier,
+        )
     except Exception:
         logger.exception("bid estimate failed for %s", global_id)
     finally:
@@ -328,6 +196,10 @@ def _row_to_dict(row: BidEstimate) -> dict:
         "confidence": row.confidence,
         "adjustments": json.loads(row.adjustments_json),
         "computed_at": row.computed_at.isoformat(),
+        "model_version": getattr(row, "model_version", None),
+        "tier": getattr(row, "tier", None),
+        "r2": getattr(row, "r2", None),
+        "residual_std": getattr(row, "residual_std", None),
     }
 
 
@@ -335,12 +207,14 @@ async def get_cached_estimate(global_id: str) -> dict | None:
     async with AsyncSessionLocal() as db:
         row = await db.get(BidEstimate, global_id)
         if row and (datetime.utcnow() - row.computed_at) < _BID_TTL:
+            # Invalidate rows computed with an older model version
+            if getattr(row, "model_version", None) != CURRENT_MODEL_VERSION:
+                return None
             return _row_to_dict(row)
     return None
 
 
 async def get_estimate_force(global_id: str) -> dict | None:
-    """Compute fresh estimate (ignoring cache) and return result dict."""
     await compute_bid_estimate(global_id)
     async with AsyncSessionLocal() as db:
         row = await db.get(BidEstimate, global_id)

@@ -160,6 +160,22 @@ class LikedListing(Base):
     walter_living_bid = Column(Integer, nullable=True) # whole euros
     bid_amount = Column(Integer, nullable=True)        # whole euros
     liked_at = Column(DateTime, default=datetime.utcnow)
+    listing_status = Column(String, nullable=True)     # active | sold | under_reservation | withdrawn
+
+
+class WozValue(Base):
+    __tablename__ = "woz_values"
+
+    global_id = Column(String, primary_key=True)
+    postcode = Column(String, nullable=True, index=True)
+    huisnummer = Column(Integer, nullable=True)
+    huisnummertoevoeging = Column(String, nullable=True)
+    nummeraanduiding_id = Column(String, nullable=True)
+    latest_woz_eur = Column(Integer, nullable=True)
+    latest_peildatum = Column(String, nullable=True)   # ISO date YYYY-MM-DD
+    history_json = Column(Text, nullable=False, default="[]")
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+    last_error = Column(String, nullable=True)         # set on failure for negative-cache
 
 
 class BidEstimate(Base):
@@ -175,3 +191,10 @@ class BidEstimate(Base):
     confidence = Column(String, default="normal")   # normal | low | unavailable
     adjustments_json = Column(Text, nullable=False, default="[]")
     computed_at = Column(DateTime, default=datetime.utcnow)
+    # v2.0 columns (nullable for backward compat with old rows)
+    model_version = Column(String, nullable=True)
+    tier = Column(String, nullable=True)
+    n_active = Column(Integer, nullable=True)
+    n_sold = Column(Integer, nullable=True)
+    r2 = Column(Float, nullable=True)
+    residual_std = Column(Float, nullable=True)
