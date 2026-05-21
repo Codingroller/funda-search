@@ -64,6 +64,7 @@
       hx-post="/listings/{{ listing.global_id }}/like"
       hx-target="this"
       hx-swap="outerHTML"
+      hx-vals='{"size": "lg"}'
       title="{% if is_liked %}Remove from liked{% else %}Save to liked{% endif %}"
     >♥</button>
   </div>

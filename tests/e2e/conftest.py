@@ -18,6 +18,16 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
+class _LiveServer(str):
+    """String subclass so f"{live_server}/path" still works, but db_path is accessible."""
+    db_path: str
+
+    def __new__(cls, url: str, db_path: str):
+        obj = super().__new__(cls, url)
+        obj.db_path = db_path
+        return obj
+
+
 @pytest.fixture(scope="session")
 def live_server():
     port = _free_port()
@@ -54,8 +64,7 @@ def live_server():
         except Exception:
             continue
 
-    url = f"http://127.0.0.1:{port}"
-    yield url
+    yield _LiveServer(f"http://127.0.0.1:{port}", db_file.name)
 
     proc.terminate()
     proc.wait()

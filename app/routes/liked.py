@@ -2,7 +2,7 @@ import asyncio
 import json
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy import or_, select
 
@@ -130,6 +130,7 @@ async def _sharing_context(current_user: User, db) -> dict:
 async def toggle_like(
     request: Request,
     global_id: str,
+    size: str = Form(""),
     current_user: User = Depends(require_auth),
 ):
     async with AsyncSessionLocal() as db:
@@ -171,7 +172,7 @@ async def toggle_like(
 
     return templates.TemplateResponse(
         request, "partials/like_button.html",
-        {"global_id": global_id, "is_liked": is_liked},
+        {"global_id": global_id, "is_liked": is_liked, "size": size},
     )
 
 
