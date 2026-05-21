@@ -30,6 +30,15 @@
   <p class="spinner-text">Fetching listings…</p>
 </div>
 
+{% if autorun %}
+<div hx-post="/queries/{{ query.id }}/run"
+     hx-trigger="load"
+     hx-indicator="#run-spinner"
+     hx-swap="none"
+     hx-on:htmx:after-request="window.location.href='/queries/{{ query.id }}'"
+     style="display:none"></div>
+{% endif %}
+
 {% if runs %}
 <div class="card">
   <div class="card-header" style="justify-content:space-between">

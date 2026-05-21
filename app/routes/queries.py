@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
@@ -290,7 +290,7 @@ async def query_run(request: Request, query_id: int, current_user: User = Depend
 
 
 @router.get("/queries/{query_id}", response_class=HTMLResponse)
-async def query_detail(request: Request, query_id: int, current_user: User = Depends(require_auth)):
+async def query_detail(request: Request, query_id: int, autorun: bool = Query(False), current_user: User = Depends(require_auth)):
     async with AsyncSessionLocal() as db:
         query = _owned_or_404(await db.get(SavedQuery, query_id), current_user)
         result = await db.execute(
@@ -305,7 +305,7 @@ async def query_detail(request: Request, query_id: int, current_user: User = Dep
         liked_ids = {row[0] for row in liked_result.all()}
     return templates.TemplateResponse(
         request, "query_detail.html",
-        {"query": query, "runs": runs, "current_user": current_user, "liked_ids": liked_ids},
+        {"query": query, "runs": runs, "current_user": current_user, "liked_ids": liked_ids, "autorun": autorun},
     )
 
 

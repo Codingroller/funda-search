@@ -29,17 +29,7 @@
   </div>
   <div class="query-card-foot">
     <a href="/queries/{{ query.id }}/edit" class="btn btn-sm">Edit</a>
-    <button
-      class="btn btn-sm"
-      hx-post="/queries/{{ query.id }}/run"
-      hx-target="#run-result-{{ query.id }}"
-      hx-swap="innerHTML"
-      hx-disabled-elt="this"
-    >
-      <span class="btn-label">Search</span>
-      <span class="btn-spinner" aria-hidden="true"><span class="spinner-ring-sm"></span></span>
-    </button>
-    <span id="run-result-{{ query.id }}" class="run-inline"></span>
+    <a href="/queries/{{ query.id }}?autorun=1" class="btn btn-sm">Search</a>
     <span style="margin-left:auto"></span>
     <button
       class="btn btn-sm btn-danger"
