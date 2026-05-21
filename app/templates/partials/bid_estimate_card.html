@@ -13,9 +13,10 @@
       </div>
       <span class="bid-range-bound">{{ estimate.high_fmt }}</span>
     </div>
-    {% if estimate.confidence == "low" %}
-    <p class="bid-card-notice">Low confidence — limited comparable listings; range is wider to reflect uncertainty</p>
-    {% endif %}
+    <p class="bid-card-notice {% if estimate.confidence == 'normal' %}bid-card-notice--normal{% endif %}">
+      {% if estimate.confidence == "low" %}Low confidence — limited comparable listings; range is wider to reflect uncertainty
+      {% else %}Normal confidence{% endif %}
+    </p>
     <div class="bid-card-actions">
       <button class="btn btn-sm"
               onclick="document.getElementById('bid-rationale-modal').style.display='flex'"
