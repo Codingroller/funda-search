@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import select
 
 from app.auth import require_auth
-from app.bid_estimator import get_cached_estimate, get_estimate_force
+from app.bid_estimator import compute_bid_estimate, get_cached_estimate, get_estimate_force
 from app.db import AsyncSessionLocal
 from app.funda_client import get_listing_detail
 from app.models import LikedListing, User
@@ -35,6 +35,8 @@ async def bid_estimate_card(
     except Exception:
         raise HTTPException(502)
     liked = await _is_liked(global_id, current_user.id)
+    if estimate is None and liked:
+        asyncio.create_task(compute_bid_estimate(global_id))
     return templates.TemplateResponse(
         request, "partials/bid_estimate_card.html",
         {"listing": listing, "estimate": estimate, "is_liked": liked},

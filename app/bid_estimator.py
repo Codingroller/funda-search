@@ -12,6 +12,7 @@ from app.models import BidEstimate
 logger = logging.getLogger(__name__)
 
 _BID_TTL = timedelta(days=7)
+_computing: set[str] = set()  # global_ids currently being computed
 _NATIONAL_AVG_WOZ_K = 320  # thousands €, approximate 2025 national average
 
 _ENERGY_ORDER = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]
@@ -261,6 +262,9 @@ def _is_sold(subject: dict) -> bool:
 
 
 async def compute_bid_estimate(global_id: str) -> None:
+    if global_id in _computing:
+        return
+    _computing.add(global_id)
     try:
         subject = await get_listing_detail(global_id)
 
@@ -305,6 +309,8 @@ async def compute_bid_estimate(global_id: str) -> None:
                     global_id, result["recommended"], result["confidence"], result["comparables_count"])
     except Exception:
         logger.exception("bid estimate failed for %s", global_id)
+    finally:
+        _computing.discard(global_id)
 
 
 def _row_to_dict(row: BidEstimate) -> dict:
