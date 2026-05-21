@@ -693,8 +693,7 @@ h2 { font-size: 16px; font-weight: 600; }
   height: 100%; width: 50%; background: var(--text); border-radius: 3px; opacity: 0.5;
   margin: 0 auto;
 }
-.bid-card-notice { font-size: 12px; color: var(--warning, #b45309); margin: 0; }
-.bid-card-notice--normal { color: var(--text-muted); }
+.bid-card-confidence { display: flex; }
 .bid-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .bid-card-meta { margin: 0; }
 .bid-computing { font-style: italic; }
