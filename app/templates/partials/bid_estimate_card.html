@@ -22,11 +22,19 @@
               onclick="document.getElementById('bid-rationale-modal').style.display='flex'"
               hx-get="/listings/{{ listing.global_id }}/bid-estimate/rationale"
               hx-target="#bid-rationale-modal-body"
-              hx-swap="innerHTML">Why this price?</button>
+              hx-swap="innerHTML"
+              hx-disabled-elt="this">
+        <span class="btn-label">Why this price?</span>
+        <span class="btn-spinner" aria-hidden="true"><span class="spinner-ring-sm"></span></span>
+      </button>
       <button class="btn btn-sm"
               hx-post="/listings/{{ listing.global_id }}/bid-estimate/recompute"
               hx-target="#bid-estimate-section"
-              hx-swap="outerHTML">Recompute</button>
+              hx-swap="outerHTML"
+              hx-disabled-elt="this">
+        <span class="btn-label">Recompute</span>
+        <span class="btn-spinner" aria-hidden="true"><span class="spinner-ring-sm"></span></span>
+      </button>
     </div>
     <p class="text-muted small bid-card-meta">
       Based on {{ estimate.comparables_count }} comparable listing{% if estimate.comparables_count != 1 %}s{% endif %}

@@ -609,6 +609,19 @@ h2 { font-size: 16px; font-weight: 600; }
 .spinner-text { color: var(--text-muted); font-size: 13.5px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Inline button spinner ── */
+.btn-spinner { display: none; }
+.btn.htmx-request .btn-label { display: none; }
+.btn.htmx-request .btn-spinner { display: inline-flex; }
+.btn.htmx-request { pointer-events: none; opacity: 0.7; }
+.spinner-ring-sm {
+  width: 13px; height: 13px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
 /* ── Energy label ── */
 .energy-label {
   display: inline-block; padding: 1px 5px; border-radius: 3px;

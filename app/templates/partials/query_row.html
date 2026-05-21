@@ -34,8 +34,11 @@
       hx-post="/queries/{{ query.id }}/run"
       hx-target="#run-result-{{ query.id }}"
       hx-swap="innerHTML"
-      hx-indicator="#run-result-{{ query.id }}"
-    >Search</button>
+      hx-disabled-elt="this"
+    >
+      <span class="btn-label">Search</span>
+      <span class="btn-spinner" aria-hidden="true"><span class="spinner-ring-sm"></span></span>
+    </button>
     <span id="run-result-{{ query.id }}" class="run-inline"></span>
     <span style="margin-left:auto"></span>
     <button
