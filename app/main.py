@@ -227,6 +227,7 @@ from app.routes import admin as admin_routes      # noqa: E402
 from app.routes import signup as signup_routes    # noqa: E402
 from app.routes import liked as liked_routes      # noqa: E402
 from app.routes import push as push_routes        # noqa: E402
+from app.routes import bid as bid_routes          # noqa: E402
 
 app.include_router(auth_routes.router)
 app.include_router(queries_routes.router)
@@ -235,3 +236,4 @@ app.include_router(admin_routes.router)
 app.include_router(signup_routes.router)
 app.include_router(liked_routes.router)
 app.include_router(push_routes.router)
+app.include_router(bid_routes.router)

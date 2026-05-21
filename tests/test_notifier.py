@@ -2,6 +2,13 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.config import settings
+from app.db import Base, engine
+
+
+@pytest.fixture(autouse=True)
+async def _db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 @pytest.fixture(autouse=True)

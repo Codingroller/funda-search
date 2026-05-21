@@ -1,0 +1,41 @@
+<div class="modal-header">
+  <h2>Why {{ estimate.recommended_fmt }}?</h2>
+  <button class="btn-close" onclick="document.getElementById('bid-rationale-modal').style.display='none'">✕</button>
+</div>
+<div class="modal-body">
+  {% if estimate.comparables_count > 0 %}
+  <p class="text-muted small">
+    Based on {{ estimate.comparables_count }} comparable listing{% if estimate.comparables_count != 1 %}s{% endif %}
+    {% if estimate.median_price_per_m2 %} at {{ "€ {:,}".format(estimate.median_price_per_m2 | int).replace(",", ".") }}/m²{% endif %}.
+    Range: {{ estimate.low_fmt }} – {{ estimate.high_fmt }}.
+  </p>
+  {% endif %}
+
+  {% if estimate.adjustments %}
+  <ul class="bid-rationale-list">
+    {% for adj in estimate.adjustments %}
+    <li class="bid-rationale-item">
+      <span class="bid-rationale-label">{{ adj.label }}</span>
+      {% if adj.delta_pct != 0 %}
+      <span class="bid-rationale-delta {% if adj.delta_pct > 0 %}bid-delta-pos{% else %}bid-delta-neg{% endif %}">
+        {% if adj.delta_pct > 0 %}+{% endif %}{{ adj.delta_pct }}%
+      </span>
+      {% endif %}
+      {% if adj.note %}
+      <span class="bid-rationale-note text-muted small">{{ adj.note }}</span>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="text-muted small">No adjustments applied — estimate equals median comparable price.</p>
+  {% endif %}
+
+  {% if estimate.confidence == "low" %}
+  <p class="bid-card-notice">Low confidence — fewer than 3 comparable listings were found. The range is wider to reflect this uncertainty.</p>
+  {% endif %}
+
+  <p class="text-muted small" style="margin-top:8px">
+    Computed {{ estimate.computed_at[:10] }} · For guidance only, not financial advice.
+  </p>
+</div>

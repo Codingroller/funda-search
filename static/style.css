@@ -647,6 +647,39 @@ h2 { font-size: 16px; font-weight: 600; }
 .detail-section-title { font-size: 15px; font-weight: 600; margin-bottom: 12px; letter-spacing: -0.01em; }
 .detail-description p { font-size: 13.5px; line-height: 1.7; margin-bottom: 8px; }
 
+/* ── Bid estimate card ── */
+.bid-card {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: 16px; display: flex; flex-direction: column; gap: 12px;
+}
+.bid-card-main { display: flex; flex-direction: column; gap: 2px; }
+.bid-card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.bid-card-amount { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; }
+.bid-card-range { display: flex; align-items: center; gap: 10px; }
+.bid-range-bound { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+.bid-range-track {
+  flex: 1; height: 6px; background: var(--border-strong); border-radius: 3px; overflow: hidden;
+}
+.bid-range-fill {
+  height: 100%; width: 50%; background: var(--text); border-radius: 3px; opacity: 0.5;
+  margin: 0 auto;
+}
+.bid-card-notice { font-size: 12px; color: var(--text-muted); margin: 0; }
+.bid-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.bid-card-meta { margin: 0; }
+.bid-computing { font-style: italic; }
+.bid-rationale-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.bid-rationale-item { display: flex; flex-direction: column; gap: 2px; }
+.bid-rationale-label { font-size: 13.5px; font-weight: 600; }
+.bid-rationale-delta {
+  display: inline-block; font-size: 12px; font-weight: 700;
+  padding: 1px 6px; border-radius: 999px; width: fit-content;
+}
+.bid-delta-pos { background: var(--success-soft); color: var(--success); }
+.bid-delta-neg { background: oklch(0.95 0.02 25); color: oklch(0.5 0.12 25); }
+[data-theme="dark"] .bid-delta-neg { background: oklch(0.22 0.05 25); color: oklch(0.75 0.1 25); }
+.bid-rationale-note { display: block; }
+
 /* ── Neighbourhood stats ── */
 .nb-glance {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));

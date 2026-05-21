@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime
 
@@ -148,6 +149,10 @@ async def toggle_like(
             is_liked = True
 
         await db.commit()
+
+    if is_liked:
+        from app.bid_estimator import compute_bid_estimate
+        asyncio.create_task(compute_bid_estimate(global_id))
 
     return templates.TemplateResponse(
         request, "partials/like_button.html",

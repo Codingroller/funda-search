@@ -111,7 +111,7 @@ def _make_detail_listing(
     m.global_id = global_id
     m.address = addr
     m.location = loc
-    m.price = MagicMock(amount=price_amount, formatted=f"€ {price_amount:,}")
+    m.price = MagicMock(amount=price_amount, formatted=f"€ {price_amount:,}", is_auction=False)
     m.property_details = pd_mock
     m.media = media
     m.broker = broker
@@ -120,6 +120,8 @@ def _make_detail_listing(
     m.living_area = living_area
     m.plot_area = None
     m.energy_label = "B"
+    m.status = None
+    m.labels = ()
     m.description = "Mooie woning."
     m.description_title = "Omschrijving"
     m.publication_date = "2025-01-01"
@@ -225,7 +227,7 @@ class TestSyncSearch:
         assert isinstance(result, list)
         assert result[0]["global_id"] == "A1"
 
-    def test_caps_at_2_pages(self):
+    def test_passes_params_to_iter_search(self):
         mock_client = MagicMock()
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=False)
@@ -234,7 +236,10 @@ class TestSyncSearch:
         with patch("app.funda_client.Funda", return_value=mock_client):
             _sync_search({"location": ["amsterdam"], "category": "buy", "sort": "newest"})
 
-        assert mock_client.iter_search.call_args.kwargs.get("max_pages") == 2
+        kw = mock_client.iter_search.call_args.kwargs
+        assert kw["location"] == ["amsterdam"]
+        assert kw["category"] == "buy"
+        assert "max_pages" not in kw
 
     def test_passes_params_through(self):
         mock_client = MagicMock()

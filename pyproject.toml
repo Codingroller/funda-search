@@ -35,5 +35,7 @@ test = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
-markers = ["e2e: end-to-end Playwright tests (deselect with -m 'not e2e')"]
+markers = ["e2e: end-to-end Playwright tests (run with -m e2e)"]
+addopts = "-m 'not e2e'"

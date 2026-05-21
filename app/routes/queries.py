@@ -9,6 +9,7 @@ from sqlalchemy import select
 from app.auth import require_auth
 import asyncio
 
+from app.bid_estimator import get_cached_estimate
 from app.cbs_client import get_buurtcode_from_coords, get_crime_stats, get_neighbourhood_stats
 from app.cbs_view import build_crime_view, build_view
 from app.db import AsyncSessionLocal
@@ -355,8 +356,10 @@ async def listing_detail_page(
             )
         )
         is_liked = liked_result.scalar_one_or_none() is not None
+    estimate = await get_cached_estimate(global_id)
     return templates.TemplateResponse(
         request, "listing_detail.html",
         {"listing": listing, "cbs": cbs, "view": view, "crime_view": crime_view,
-         "back_url": back_url, "current_user": current_user, "is_liked": is_liked},
+         "back_url": back_url, "current_user": current_user, "is_liked": is_liked,
+         "estimate": estimate},
     )

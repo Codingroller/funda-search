@@ -160,3 +160,18 @@ class LikedListing(Base):
     walter_living_bid = Column(Integer, nullable=True) # whole euros
     bid_amount = Column(Integer, nullable=True)        # whole euros
     liked_at = Column(DateTime, default=datetime.utcnow)
+
+
+class BidEstimate(Base):
+    __tablename__ = "bid_estimates"
+
+    global_id = Column(String, primary_key=True)
+    asking_price = Column(Integer, nullable=True)
+    low = Column(Integer, nullable=False)
+    recommended = Column(Integer, nullable=False)
+    high = Column(Integer, nullable=False)
+    comparables_count = Column(Integer, nullable=False)
+    median_price_per_m2 = Column(Float, nullable=True)
+    confidence = Column(String, default="normal")   # normal | low | unavailable
+    adjustments_json = Column(Text, nullable=False, default="[]")
+    computed_at = Column(DateTime, default=datetime.utcnow)

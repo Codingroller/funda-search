@@ -1,0 +1,49 @@
+{% if estimate and estimate.confidence != "unavailable" %}
+<div id="bid-estimate-section" class="detail-section">
+  <h2 class="detail-section-title">Bid estimate</h2>
+  <div class="bid-card">
+    <div class="bid-card-main">
+      <div class="bid-card-label">Recommended bid</div>
+      <div class="bid-card-amount">{{ estimate.recommended_fmt }}</div>
+    </div>
+    <div class="bid-card-range">
+      <span class="bid-range-bound">{{ estimate.low_fmt }}</span>
+      <div class="bid-range-track">
+        <div class="bid-range-fill"></div>
+      </div>
+      <span class="bid-range-bound">{{ estimate.high_fmt }}</span>
+    </div>
+    {% if estimate.confidence == "low" %}
+    <p class="bid-card-notice">Low confidence — fewer than 3 comparable listings found</p>
+    {% endif %}
+    <div class="bid-card-actions">
+      <button class="btn btn-sm"
+              onclick="document.getElementById('bid-rationale-modal').style.display='flex'"
+              hx-get="/listings/{{ listing.global_id }}/bid-estimate/rationale"
+              hx-target="#bid-rationale-modal-body"
+              hx-swap="innerHTML">Why this price?</button>
+      <button class="btn btn-sm"
+              hx-post="/listings/{{ listing.global_id }}/bid-estimate/recompute"
+              hx-target="#bid-estimate-section"
+              hx-swap="outerHTML">Recompute</button>
+    </div>
+    <p class="text-muted small bid-card-meta">
+      Based on {{ estimate.comparables_count }} comparable listing{% if estimate.comparables_count != 1 %}s{% endif %}
+      {% if estimate.median_price_per_m2 %} · {{ "€ {:,}".format(estimate.median_price_per_m2 | int).replace(",", ".") }}/m² avg.{% endif %}
+    </p>
+  </div>
+</div>
+{% elif estimate and estimate.confidence == "unavailable" %}
+<div id="bid-estimate-section" class="detail-section">
+  <h2 class="detail-section-title">Bid estimate</h2>
+  <p class="text-muted">Bid guidance not available for this listing (auction or already sold).</p>
+</div>
+{% elif is_liked %}
+<div id="bid-estimate-section" class="detail-section"
+     hx-get="/listings/{{ listing.global_id }}/bid-estimate/card"
+     hx-trigger="load delay:4s, every 6s"
+     hx-swap="outerHTML">
+  <h2 class="detail-section-title">Bid estimate</h2>
+  <p class="text-muted bid-computing">Computing bid estimate…</p>
+</div>
+{% endif %}
