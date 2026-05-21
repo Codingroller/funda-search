@@ -113,7 +113,8 @@
 
   <script>
   (function () {
-    if (localStorage.getItem('install-dismissed')) return;
+    var dismissed = localStorage.getItem('install-dismissed');
+    if (dismissed && (Date.now() - parseInt(dismissed)) < 86400000) return;
     var isStandalone = window.navigator.standalone === true ||
                        window.matchMedia('(display-mode: standalone)').matches;
     if (isStandalone) return;
@@ -146,7 +147,7 @@
   }
 
   function dismissInstall() {
-    localStorage.setItem('install-dismissed', '1');
+    localStorage.setItem('install-dismissed', Date.now().toString());
     document.getElementById('install-banner').style.display = 'none';
   }
   </script>
