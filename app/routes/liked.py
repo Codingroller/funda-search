@@ -10,6 +10,7 @@ from app.auth import require_auth
 from app.bid_estimator import compute_bid_estimate, get_cached_estimate
 from app.db import AsyncSessionLocal
 from app.models import LikedListing, ListingCache, SharingConnection, User
+from app.notifier import notify_user
 from app.templates_env import templates
 
 router = APIRouter()
@@ -143,16 +144,30 @@ async def toggle_like(
         if existing:
             await db.delete(existing)
             is_liked = False
+            partner_ids: set[int] = set()
+            payload: dict = {}
         else:
             cache_row = await db.get(ListingCache, global_id)
             payload = _snapshot(json.loads(cache_row.payload_json), global_id) if cache_row else {"global_id": global_id}
             db.add(LikedListing(user_id=current_user.id, global_id=global_id, payload_json=json.dumps(payload)))
             is_liked = True
+            partner_ids = await _get_partner_ids(current_user.id, db)
 
         await db.commit()
 
     if is_liked:
         asyncio.create_task(compute_bid_estimate(global_id))
+        for pid in partner_ids:
+            listing_title = payload.get("title") or "a listing"
+            city = payload.get("city", "")
+            body = f"{listing_title}{f', {city}' if city else ''}"
+            asyncio.create_task(notify_user(
+                pid,
+                title=f"{current_user.username} liked a listing",
+                body=body,
+                url="/liked",
+                tag=f"like-{global_id}",
+            ))
 
     return templates.TemplateResponse(
         request, "partials/like_button.html",
