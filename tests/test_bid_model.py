@@ -190,6 +190,62 @@ class TestConfidenceLevel:
         assert confidence_level(m) == "normal"
 
 
+# ── TestNullFeatureHandling ───────────────────────────────────────────────
+# These guard against None values in nullable features (year_built, log_area)
+# crashing fit() or predict(). Each test maps to a real production failure mode.
+
+class TestNullFeatureHandling:
+    def test_fit_does_not_crash_with_null_year_built_in_cohort(self):
+        # year varies across rows → year_built enters feature_used; some rows
+        # have construction_year=None → must impute mean, not crash on None - float
+        rows = [_row(year=y, price=500_000 + y * 100) for y in range(1980, 1995)]
+        rows += [_row(year=None, price=500_000) for _ in range(3)]
+        m = fit(rows, [1.0] * len(rows))
+        assert isinstance(m, FittedModel)
+        assert not m.fallback
+
+    def test_fit_null_year_rows_treated_as_cohort_mean(self):
+        # Null-year rows contribute z=0, so they don't skew coef but also don't crash
+        rows = [_row(area=a, year=2000, price=a * 5000) for a in range(80, 95)]
+        rows += [_row(area=90, year=None, price=450_000) for _ in range(3)]
+        m = fit(rows, [1.0] * len(rows))
+        lo, rec, hi = predict(m, _row(area=90))
+        assert rec > 0
+
+    def test_fit_mixed_null_features_across_rows(self):
+        # Different rows missing different nullable features
+        rows = [_row(area=a, year=2000 + a, price=a * 5000) for a in range(80, 93)]
+        rows += [_row(area=90, year=None, price=450_000)]
+        rows += [_row(area=85, year=1995, price=425_000)]
+        m = fit(rows, [1.0] * len(rows))
+        assert isinstance(m, FittedModel)
+
+    def test_predict_subject_with_null_year_built(self):
+        rows = [_row(year=y, area=a, price=a * 5000)
+                for y, a in zip(range(1990, 2005), range(80, 95))]
+        m = fit(rows, [1.0] * len(rows))
+        subject = {**_row(), "construction_year": None}
+        lo, rec, hi = predict(m, subject)
+        assert rec > 0
+        assert lo < rec < hi
+
+    def test_predict_subject_all_optional_features_none(self):
+        # Only living_area is provided; all other fields are None
+        rows = [_row(year=y, area=a, price=a * 5000)
+                for y, a in zip(range(1990, 2005), range(80, 95))]
+        m = fit(rows, [1.0] * len(rows))
+        subject = {
+            "living_area": 90,
+            "price_amount": None,
+            "construction_year": None,
+            "energy_label": None,
+            "plot_area": None,
+            "object_type": None,
+        }
+        lo, rec, hi = predict(m, subject)
+        assert rec > 0
+
+
 # ── TestBandWidthReflectsDispersion ──────────────────────────────────────
 
 class TestBandWidthReflectsDispersion:
