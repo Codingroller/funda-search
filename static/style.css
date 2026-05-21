@@ -399,7 +399,7 @@ h2 { font-size: 16px; font-weight: 600; }
   font-family: inherit;
   flex-shrink: 0;
 }
-.like-btn:hover { color: var(--danger); transform: scale(1.2); }
+.like-btn:hover { color: var(--danger); }
 .like-btn.liked { color: var(--danger); }
 .like-btn:not(.liked) { color: var(--border-strong); }
 .like-btn-lg { font-size: 22px; width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; align-self: center; }
