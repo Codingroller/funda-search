@@ -114,6 +114,16 @@ class CbsWijk(Base):
     fetched_at = Column(DateTime, default=datetime.utcnow)
 
 
+class CbsGemeente(Base):
+    __tablename__ = "cbs_gemeente"
+
+    gemeentecode = Column(String, primary_key=True)
+    gemeentenaam = Column(String, nullable=True)
+    crime_json = Column(Text, nullable=False, default="{}")
+    safety_json = Column(Text, nullable=False, default="{}")
+    fetched_at = Column(DateTime, default=datetime.utcnow)
+
+
 class ListingCache(Base):
     __tablename__ = "listing_cache"
 

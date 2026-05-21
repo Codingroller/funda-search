@@ -127,6 +127,7 @@
     <a class="nb-chip" href="#nb-mob">Mobility</a>
     <a class="nb-chip" href="#nb-prox">Proximity</a>
     <a class="nb-chip" href="#nb-area">Area</a>
+    {% if crime_view %}<a class="nb-chip" href="#nb-safety">Safety</a>{% endif %}
     {% if view.sparse.has_any %}<a class="nb-chip" href="#nb-more">More ▸</a>{% endif %}
   </nav>
 
@@ -225,6 +226,53 @@
     {% endif %}
     {{ nb_row("Addr. density", (view.area.addr_den_b ~ " /km²") if view.area.addr_den_b else none, (view.area.addr_den_w ~ " /km²") if view.area.addr_den_w else none) }}
   </section>
+
+  {# Safety #}
+  {% if crime_view %}
+  <section id="nb-safety" class="nb-section">
+    <h3 class="nb-section-title">Safety · {{ crime_view.gemeentenaam }}</h3>
+    <p class="text-muted small" style="margin-bottom:10px">Municipality-level data (finest granularity CBS publishes for crime).</p>
+
+    {# Glance strip #}
+    <div class="nb-glance">
+      {% if crime_view.score %}
+      <div class="nb-glance-kpi">
+        <div class="nb-glance-val">{{ crime_view.score }}/10</div>
+        <div class="nb-glance-label">Safety score</div>
+        <div class="nb-glance-sub">{{ crime_view.score_label }}{% if crime_view.safety_year %} · {{ crime_view.safety_year }}{% endif %}</div>
+      </div>
+      {% endif %}
+      {% if crime_view.total_per_1k %}
+      <div class="nb-glance-kpi">
+        <div class="nb-glance-val">{{ crime_view.total_per_1k }}</div>
+        <div class="nb-glance-label">Crimes / 1k residents</div>
+        <div class="nb-glance-sub">{% if crime_view.crime_year %}{{ crime_view.crime_year }}{% endif %}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if crime_view.has_crime %}
+    <div class="nb-sparse-section-label">Registered crimes per 1,000 residents ({{ crime_view.crime_year }})</div>
+    {% if crime_view.theft_per_1k is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Theft &amp; burglary</span><span class="nb-sparse-val">{{ crime_view.theft_per_1k }}</span></div>{% endif %}
+    {% if crime_view.vandalism_per_1k is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Vandalism</span><span class="nb-sparse-val">{{ crime_view.vandalism_per_1k }}</span></div>{% endif %}
+    {% if crime_view.disorder_per_1k is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Public order</span><span class="nb-sparse-val">{{ crime_view.disorder_per_1k }}</span></div>{% endif %}
+    {% endif %}
+
+    {% if crime_view.has_safety %}
+    <div class="nb-sparse-section-label">Victimization survey ({{ crime_view.safety_year }})</div>
+    {% if crime_view.pct_feel_unsafe is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Feel unsafe in area</span><span class="nb-sparse-val">{{ crime_view.pct_feel_unsafe }}%</span></div>{% endif %}
+    {% if crime_view.pct_much_crime is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Perceive much crime</span><span class="nb-sparse-val">{{ crime_view.pct_much_crime }}%</span></div>{% endif %}
+    {% if crime_view.pct_burglary_victim is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Burglary victim</span><span class="nb-sparse-val">{{ crime_view.pct_burglary_victim }}%</span></div>{% endif %}
+    {% if crime_view.pct_property_victim is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Property crime victim</span><span class="nb-sparse-val">{{ crime_view.pct_property_victim }}%</span></div>{% endif %}
+    {% if crime_view.pct_vandalism_victim is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Vandalism victim</span><span class="nb-sparse-val">{{ crime_view.pct_vandalism_victim }}%</span></div>{% endif %}
+    {% if crime_view.pct_assault_victim is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Assault victim</span><span class="nb-sparse-val">{{ crime_view.pct_assault_victim }}%</span></div>{% endif %}
+    {% endif %}
+
+    <p class="text-muted small" style="margin-top:10px">
+      Sources: CBS Geregistreerde criminaliteit (83648NED){% if crime_view.has_safety %} · CBS Veiligheidsmonitor (85146NED){% endif %} · CC BY 4.0
+    </p>
+  </section>
+  {% endif %}
 
   {# Sparse accordion #}
   <details id="nb-more" class="nb-sparse">

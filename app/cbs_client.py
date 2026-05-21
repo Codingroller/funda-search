@@ -14,10 +14,13 @@ import httpx
 from sqlalchemy import select
 
 from app.db import AsyncSessionLocal
-from app.models import CbsBuurt, CbsWijk
+from app.models import CbsBuurt, CbsGemeente, CbsWijk
 
 _ODATA_BASE = "https://datasets.cbs.nl/odata/v1/CBS/86165NED"
+_CRIME_BASE = "https://datasets.cbs.nl/odata/v1/CBS/83648NED"
+_SAFETY_BASE = "https://datasets.cbs.nl/odata/v1/CBS/85146NED"
 _TTL_DAYS = 365
+_TTL_CRIME_DAYS = 180
 
 
 def _is_stale(fetched_at: datetime) -> bool:
@@ -362,4 +365,140 @@ async def get_neighbourhood_stats(neighbourhood_identifier: str) -> dict | None:
     return {
         "buurt": _structure(buurt_obs, buurtcode, buurt_name, gemeente),
         "wijk":  _structure(wijk_obs,  wijkcode,  wijk_name,  gemeente),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Crime & safety stats (gemeente level)
+# 83648NED — Geregistreerde criminaliteit, per gemeente, annual
+# 85146NED — Veiligheidsmonitor, per gemeente, biennial (55 largest only)
+# ---------------------------------------------------------------------------
+
+async def _fetch_crime_obs(gemeente_code: str) -> tuple[str | None, dict]:
+    """Return (year, {(SoortMisdrijf, Measure): value}) for the latest annual period."""
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(
+                f"{_CRIME_BASE}/Observations",
+                params={"$filter": f"RegioS eq '{gemeente_code}'", "$top": "2000"},
+            )
+            resp.raise_for_status()
+            rows = resp.json().get("value", [])
+        if not rows:
+            return None, {}
+        annual = sorted(
+            {r["Perioden"] for r in rows if r.get("Perioden", "").endswith("JJ00")},
+            reverse=True,
+        )
+        if not annual:
+            return None, {}
+        latest = annual[0]
+        obs = {
+            (r["SoortMisdrijf"], r["Measure"]): r.get("Value")
+            for r in rows if r.get("Perioden") == latest
+        }
+        return latest[:4], obs
+    except Exception:
+        return None, {}
+
+
+async def _fetch_safety_obs(gemeente_code: str) -> tuple[str | None, dict]:
+    """Return (year, {Measure: value}) for the latest period in 85146NED."""
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{_SAFETY_BASE}/Observations",
+                params={"$filter": f"RegioS eq '{gemeente_code}'", "$top": "500"},
+            )
+            resp.raise_for_status()
+            rows = resp.json().get("value", [])
+        if not rows:
+            return None, {}
+        latest = sorted({r["Perioden"] for r in rows}, reverse=True)[0]
+        obs = {r["Measure"]: r.get("Value") for r in rows if r.get("Perioden") == latest}
+        return latest[:4], obs
+    except Exception:
+        return None, {}
+
+
+async def get_crime_stats(buurtcode: str) -> dict | None:
+    """Return structured crime/safety stats for the gemeente containing buurtcode.
+
+    buurtcode format: BU03920301 → gemeente GM0392 (chars 2–5).
+    Returns None if no data is available.
+    """
+    if not buurtcode or not buurtcode.upper().startswith("BU") or len(buurtcode) < 6:
+        return None
+
+    gemeente_code = "GM" + buurtcode.upper()[2:6]
+    ttl = timedelta(days=_TTL_CRIME_DAYS)
+
+    async with AsyncSessionLocal() as db:
+        row = await db.get(CbsGemeente, gemeente_code)
+        if row and (datetime.utcnow() - row.fetched_at) < ttl:
+            return {
+                "gemeente": gemeente_code,
+                "gemeentenaam": row.gemeentenaam,
+                "crime": json.loads(row.crime_json),
+                "safety": json.loads(row.safety_json),
+            }
+
+    (crime_year, crime_obs), (safety_year, safety_obs), gemeente_name = await asyncio.gather(
+        _fetch_crime_obs(gemeente_code),
+        _fetch_safety_obs(gemeente_code),
+        _fetch_region_name(gemeente_code),
+    )
+
+    if not crime_obs and not safety_obs:
+        return None
+
+    def _v(obs, *keys):
+        for k in keys:
+            v = obs.get(k)
+            if v is not None:
+                return v
+        return None
+
+    crime = {
+        "year":            crime_year,
+        "total_per_1k":    _v(crime_obs, ("T001161", "M004200_4")),
+        "theft_per_1k":    _v(crime_obs, ("CRI1100", "M004200_4")),
+        "vandalism_per_1k":_v(crime_obs, ("CRI2100", "M004200_4")),
+        "disorder_per_1k": _v(crime_obs, ("CRI2200", "M004200_4")),
+    }
+    safety = {
+        "year":                safety_year,
+        "score":               _v(safety_obs, "M005017"),
+        "pct_feel_unsafe":     _v(safety_obs, "A047555"),
+        "pct_much_crime":      _v(safety_obs, "A047556"),
+        "pct_burglary_victim": _v(safety_obs, "D003829_7"),
+        "pct_property_victim": _v(safety_obs, "D003829_6"),
+        "pct_vandalism_victim":_v(safety_obs, "D003829_15"),
+        "pct_assault_victim":  _v(safety_obs, "D003829_4"),
+    }
+
+    now = datetime.utcnow()
+    async with AsyncSessionLocal() as db:
+        row = await db.get(CbsGemeente, gemeente_code)
+        crime_str, safety_str = json.dumps(crime), json.dumps(safety)
+        if row:
+            row.gemeentenaam = gemeente_name
+            row.crime_json = crime_str
+            row.safety_json = safety_str
+            row.fetched_at = now
+        else:
+            db.add(CbsGemeente(
+                gemeentecode=gemeente_code,
+                gemeentenaam=gemeente_name,
+                crime_json=crime_str,
+                safety_json=safety_str,
+                fetched_at=now,
+            ))
+        await db.commit()
+
+    return {
+        "gemeente": gemeente_code,
+        "gemeentenaam": gemeente_name,
+        "crime": crime,
+        "safety": safety,
     }

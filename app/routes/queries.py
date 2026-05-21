@@ -7,8 +7,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
 
 from app.auth import require_auth
-from app.cbs_client import get_buurtcode_from_coords, get_neighbourhood_stats
-from app.cbs_view import build_view
+import asyncio
+
+from app.cbs_client import get_buurtcode_from_coords, get_crime_stats, get_neighbourhood_stats
+from app.cbs_view import build_crime_view, build_view
 from app.db import AsyncSessionLocal
 from app.dutch_cities import search_cities
 from app.funda_client import get_listing_detail, search_listings
@@ -332,13 +334,18 @@ async def listing_detail_page(
         raise HTTPException(502, detail="Could not load listing from Funda")
 
     cbs = None
+    crime_stats = None
     identifier = listing.get("neighbourhood_identifier")
     if (not identifier or not str(identifier).upper().startswith("BU")) and listing.get("lat") and listing.get("lon"):
         identifier = await get_buurtcode_from_coords(listing["lat"], listing["lon"])
     if identifier:
-        cbs = await get_neighbourhood_stats(identifier)
+        cbs, crime_stats = await asyncio.gather(
+            get_neighbourhood_stats(identifier),
+            get_crime_stats(identifier),
+        )
 
     view = build_view(cbs) if cbs else None
+    crime_view = build_crime_view(crime_stats) if crime_stats else None
     back_url = request.headers.get("referer") or "/"
     async with AsyncSessionLocal() as db:
         liked_result = await db.execute(
@@ -350,6 +357,6 @@ async def listing_detail_page(
         is_liked = liked_result.scalar_one_or_none() is not None
     return templates.TemplateResponse(
         request, "listing_detail.html",
-        {"listing": listing, "cbs": cbs, "view": view, "back_url": back_url,
-         "current_user": current_user, "is_liked": is_liked},
+        {"listing": listing, "cbs": cbs, "view": view, "crime_view": crime_view,
+         "back_url": back_url, "current_user": current_user, "is_liked": is_liked},
     )

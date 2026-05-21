@@ -54,6 +54,62 @@ def _pct_segments(values_b, values_w, labels, colors) -> list[dict]:
     return segs
 
 
+def _score_label(score) -> str:
+    if score is None: return ""
+    s = float(score)
+    if s >= 8.0: return "Very safe"
+    if s >= 7.0: return "Safe"
+    if s >= 6.0: return "Moderate"
+    if s >= 5.0: return "Below average"
+    return "Unsafe"
+
+def _score_css(score) -> str:
+    if score is None: return ""
+    s = float(score)
+    if s >= 7.0: return "nb-badge-green"
+    if s >= 6.0: return "nb-badge-amber"
+    return "nb-badge-red"
+
+def _fmt1(v) -> str | None:
+    return f"{float(v):.1f}" if v is not None else None
+
+def _fmt0(v) -> str | None:
+    return f"{float(v):.0f}" if v is not None else None
+
+def build_crime_view(crime_stats: dict) -> dict | None:
+    if not crime_stats:
+        return None
+    c = crime_stats.get("crime", {})
+    s = crime_stats.get("safety", {})
+    score = s.get("score")
+    total = c.get("total_per_1k")
+    has_crime  = any(c.get(k) is not None for k in ("total_per_1k","theft_per_1k","vandalism_per_1k","disorder_per_1k"))
+    has_safety = any(s.get(k) is not None for k in ("score","pct_feel_unsafe","pct_much_crime","pct_burglary_victim","pct_property_victim"))
+    if not has_crime and not has_safety:
+        return None
+    return {
+        "gemeente":      crime_stats.get("gemeente"),
+        "gemeentenaam":  crime_stats.get("gemeentenaam"),
+        "crime_year":    c.get("year"),
+        "safety_year":   s.get("year"),
+        "score":         _fmt1(score),
+        "score_label":   _score_label(score),
+        "score_css":     _score_css(score),
+        "total_per_1k":         _fmt1(total),
+        "theft_per_1k":         _fmt1(c.get("theft_per_1k")),
+        "vandalism_per_1k":     _fmt1(c.get("vandalism_per_1k")),
+        "disorder_per_1k":      _fmt1(c.get("disorder_per_1k")),
+        "pct_feel_unsafe":      _fmt0(s.get("pct_feel_unsafe")),
+        "pct_much_crime":       _fmt0(s.get("pct_much_crime")),
+        "pct_burglary_victim":  _fmt1(s.get("pct_burglary_victim")),
+        "pct_property_victim":  _fmt1(s.get("pct_property_victim")),
+        "pct_vandalism_victim": _fmt1(s.get("pct_vandalism_victim")),
+        "pct_assault_victim":   _fmt1(s.get("pct_assault_victim")),
+        "has_crime":  has_crime,
+        "has_safety": has_safety,
+    }
+
+
 def build_view(cbs: dict) -> dict:
     b  = cbs.get("buurt", {})
     w  = cbs.get("wijk",  {})
