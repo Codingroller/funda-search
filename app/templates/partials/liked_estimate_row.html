@@ -1,0 +1,17 @@
+{% if estimate and estimate.confidence != "unavailable" %}
+<div class="liked-check-item liked-estimate-row">
+  <span class="liked-check-label">Bid estimate</span>
+  <div>
+    <span class="liked-estimate-amount">{{ estimate.recommended_fmt }}</span>
+    <span class="liked-estimate-range text-muted small">{{ estimate.low_fmt }} – {{ estimate.high_fmt }}</span>
+  </div>
+</div>
+{% elif estimate is none %}
+<div class="liked-check-item liked-estimate-row"
+     hx-get="/liked/{{ global_id }}/estimate-row"
+     hx-trigger="every 6s"
+     hx-swap="outerHTML">
+  <span class="liked-check-label">Bid estimate</span>
+  <span class="text-muted small">Computing…</span>
+</div>
+{% endif %}

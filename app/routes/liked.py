@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import or_, select
 
 from app.auth import require_auth
-from app.bid_estimator import get_cached_estimate
+from app.bid_estimator import compute_bid_estimate, get_cached_estimate
 from app.db import AsyncSessionLocal
 from app.models import LikedListing, ListingCache, SharingConnection, User
 from app.templates_env import templates
@@ -152,12 +152,29 @@ async def toggle_like(
         await db.commit()
 
     if is_liked:
-        from app.bid_estimator import compute_bid_estimate
         asyncio.create_task(compute_bid_estimate(global_id))
 
     return templates.TemplateResponse(
         request, "partials/like_button.html",
         {"global_id": global_id, "is_liked": is_liked},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Bid estimate row (HTMX polling fragment for liked grid)
+# ---------------------------------------------------------------------------
+
+
+@router.get("/liked/{global_id}/estimate-row", response_class=HTMLResponse)
+async def liked_estimate_row(
+    request: Request,
+    global_id: str,
+    current_user: User = Depends(require_auth),
+):
+    estimate = await get_cached_estimate(global_id)
+    return templates.TemplateResponse(
+        request, "partials/liked_estimate_row.html",
+        {"estimate": estimate, "global_id": global_id},
     )
 
 
@@ -421,6 +438,7 @@ async def liked_page(request: Request, current_user: User = Depends(require_auth
             "owner_id": row.LikedListing.user_id,
             "owner_username": row.username,
             "is_own": row.LikedListing.user_id == current_user.id,
+            "listing_status": row.LikedListing.listing_status or "active",
         }
         for row in rows
     ]
@@ -428,6 +446,9 @@ async def liked_page(request: Request, current_user: User = Depends(require_auth
     estimates = await asyncio.gather(
         *[get_cached_estimate(item["global_id"]) for item in items_base]
     )
+    for item, est in zip(items_base, estimates):
+        if est is None:
+            asyncio.create_task(compute_bid_estimate(item["global_id"]))
     items = [dict(item, estimate=est) for item, est in zip(items_base, estimates)]
 
     ctx.update({"items": items, "current_user": current_user})

@@ -33,6 +33,19 @@
   {% endif %}
 
   <div class="liked-item">
+    {# Status banner — shown when listing is no longer active #}
+    {% if item.listing_status and item.listing_status != "active" %}
+    <div class="listing-status-bar status-{{ item.listing_status }}">
+      {% if item.listing_status == "sold" %}Verkocht
+      {% elif item.listing_status == "under_reservation" %}Verkocht onder voorbehoud
+      {% elif item.listing_status == "negotiations" %}Onder bod
+      {% elif item.listing_status == "withdrawn" %}Ingetrokken
+      {% elif item.listing_status == "rented" %}Verhuurd
+      {% elif item.listing_status == "removed" %}Verwijderd van Funda
+      {% endif %}
+    </div>
+    {% endif %}
+
     {# Owner badge (only for partners' listings) #}
     {% if not own %}
     <div class="owner-badge-bar">
@@ -117,16 +130,6 @@
         >
       </div>
 
-      {% if item.estimate and item.estimate.confidence != "unavailable" %}
-      <div class="liked-check-item liked-estimate-row">
-        <span class="liked-check-label">System estimate</span>
-        <div>
-          <span class="liked-estimate-amount">{{ item.estimate.recommended_fmt }}</span>
-          <span class="liked-estimate-range text-muted small">{{ item.estimate.low_fmt }} – {{ item.estimate.high_fmt }}</span>
-        </div>
-      </div>
-      {% endif %}
-
       <div class="liked-check-item">
         <label class="liked-check-label" for="wlb-{{ gid }}">Walter living bid</label>
         <div class="liked-bid-wrap">
@@ -166,6 +169,10 @@
           >
         </div>
       </div>
+
+      {% with estimate=item.estimate, global_id=gid %}
+      {% include "partials/liked_estimate_row.html" %}
+      {% endwith %}
     </div>
 
     {# Notes #}

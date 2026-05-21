@@ -530,6 +530,22 @@ h2 { font-size: 16px; font-weight: 600; }
 .owner-badge-bar { padding: 4px 12px; background: var(--info-soft); border-bottom: 1px solid oklch(0.86 0.04 235); }
 .owner-badge { font-size: 11px; font-weight: 700; color: var(--info); text-transform: uppercase; letter-spacing: 0.04em; }
 
+/* ── Listing status banner ── */
+.listing-status-bar {
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid;
+}
+.status-sold { background: var(--danger-soft); color: var(--danger); border-color: oklch(0.82 0.1 25); }
+.status-under_reservation { background: var(--warning-soft); color: var(--warning); border-color: oklch(0.82 0.1 70); }
+.status-negotiations { background: var(--warning-soft); color: var(--warning); border-color: oklch(0.82 0.1 70); }
+.status-withdrawn { background: var(--surface-2); color: var(--text-muted); border-color: var(--border-strong); }
+.status-rented { background: var(--surface-2); color: var(--text-muted); border-color: var(--border-strong); }
+.status-removed { background: var(--surface-2); color: var(--text-muted); border-color: var(--border-strong); }
+
 /* ── Due diligence checklist ── */
 .liked-checklist {
   display: flex; flex-wrap: wrap; gap: 10px; padding: 10px 12px;
