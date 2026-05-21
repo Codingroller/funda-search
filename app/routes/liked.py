@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import or_, select
 
 from app.auth import require_auth
+from app.bid_estimator import get_cached_estimate
 from app.db import AsyncSessionLocal
 from app.models import LikedListing, ListingCache, SharingConnection, User
 from app.templates_env import templates
@@ -406,22 +407,28 @@ async def liked_page(request: Request, current_user: User = Depends(require_auth
             .order_by(LikedListing.liked_at.desc())
         )
 
-    items = []
-    for row in liked_result.all():
-        ll = row.LikedListing
-        items.append({
-            "listing": json.loads(ll.payload_json),
-            "notes": ll.notes or "",
-            "agent_contacted": ll.agent_contacted,
-            "viewing_date": ll.viewing_date or "",
-            "walter_living_bid": ll.walter_living_bid,
-            "bid_amount": ll.bid_amount,
-            "liked_at": ll.liked_at,
-            "global_id": ll.global_id,
-            "owner_id": ll.user_id,
+    rows = liked_result.all()
+    items_base = [
+        {
+            "listing": json.loads(row.LikedListing.payload_json),
+            "notes": row.LikedListing.notes or "",
+            "agent_contacted": row.LikedListing.agent_contacted,
+            "viewing_date": row.LikedListing.viewing_date or "",
+            "walter_living_bid": row.LikedListing.walter_living_bid,
+            "bid_amount": row.LikedListing.bid_amount,
+            "liked_at": row.LikedListing.liked_at,
+            "global_id": row.LikedListing.global_id,
+            "owner_id": row.LikedListing.user_id,
             "owner_username": row.username,
-            "is_own": ll.user_id == current_user.id,
-        })
+            "is_own": row.LikedListing.user_id == current_user.id,
+        }
+        for row in rows
+    ]
+
+    estimates = await asyncio.gather(
+        *[get_cached_estimate(item["global_id"]) for item in items_base]
+    )
+    items = [dict(item, estimate=est) for item, est in zip(items_base, estimates)]
 
     ctx.update({"items": items, "current_user": current_user})
     return templates.TemplateResponse(request, "liked.html", ctx)

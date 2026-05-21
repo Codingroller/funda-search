@@ -668,6 +668,8 @@ h2 { font-size: 16px; font-weight: 600; }
 .bid-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .bid-card-meta { margin: 0; }
 .bid-computing { font-style: italic; }
+.liked-estimate-amount { font-size: 14px; font-weight: 700; }
+.liked-estimate-range { display: block; font-size: 11.5px; }
 .bid-rationale-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
 .bid-rationale-item { display: flex; flex-direction: column; gap: 2px; }
 .bid-rationale-label { font-size: 13.5px; font-weight: 600; }

@@ -117,6 +117,16 @@
         >
       </div>
 
+      {% if item.estimate and item.estimate.confidence != "unavailable" %}
+      <div class="liked-check-item liked-estimate-row">
+        <span class="liked-check-label">System estimate</span>
+        <div>
+          <span class="liked-estimate-amount">{{ item.estimate.recommended_fmt }}</span>
+          <span class="liked-estimate-range text-muted small">{{ item.estimate.low_fmt }} – {{ item.estimate.high_fmt }}</span>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="liked-check-item">
         <label class="liked-check-label" for="wlb-{{ gid }}">Walter living bid</label>
         <div class="liked-bid-wrap">
