@@ -56,6 +56,8 @@ async def run_query_job(query_id: int) -> None:
             return
 
         params = json.loads(query.params_json)
+        if len(params.get("location", [])) > 1 and "radius_km" in params:
+            params.pop("radius_km")
         started_at = datetime.utcnow()
 
         try:
