@@ -17,7 +17,6 @@ router = APIRouter()
 async def _admin_ctx(request: Request, current_user: User, **extra):
     async with AsyncSessionLocal() as db:
         users_raw = (await db.execute(select(User).order_by(User.created_at))).scalars().all()
-        # Query counts per user
         counts_raw = await db.execute(
             select(SavedQuery.user_id, func.count(SavedQuery.id)).group_by(SavedQuery.user_id)
         )
@@ -30,10 +29,18 @@ async def _admin_ctx(request: Request, current_user: User, **extra):
             .order_by(InviteToken.created_at.desc())
         )).scalars().all()
 
+        queries_raw = (await db.execute(
+            select(SavedQuery, User.username)
+            .join(User, User.id == SavedQuery.user_id)
+            .order_by(User.username, SavedQuery.name)
+        )).all()
+
     users = [{"user": u, "query_count": query_counts.get(u.id, 0)} for u in users_raw]
+    queries = [{"query": row.SavedQuery, "username": row.username} for row in queries_raw]
     return templates.TemplateResponse(
         request, "admin.html",
-        {"users": users, "invite_tokens": tokens, "current_user": current_user, **extra},
+        {"users": users, "queries": queries, "invite_tokens": tokens,
+         "current_user": current_user, **extra},
     )
 
 

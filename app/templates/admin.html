@@ -94,6 +94,67 @@
     </table>
   </div>
 </div>
+<div class="card" style="margin-top:20px">
+  <div class="card-header">
+    <h3>Saved searches</h3>
+    <span class="text-muted small">{{ queries | length }} total</span>
+  </div>
+  <div class="card-body" style="padding:0">
+    {% if queries %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Name</th>
+          <th>Locations</th>
+          <th>Interval</th>
+          <th>Status</th>
+          <th>Last run</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in queries %}
+        {% set q = row.query %}
+        {% set params = q.params_json | fromjson %}
+        {% set locations = params.get('location', []) %}
+        <tr>
+          <td class="text-muted small">{{ row.username }}</td>
+          <td>{{ q.name }}</td>
+          <td>
+            {% if locations %}
+              {{ locations[0] }}{% if locations | length > 1 %} <span class="text-muted small">+{{ locations | length - 1 }} more</span>{% endif %}
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-muted small">
+            {% set mins = q.interval_minutes %}
+            {% if mins < 60 %}{{ mins }}m
+            {% elif mins < 1440 %}{{ (mins / 60) | int }}h
+            {% else %}{{ (mins / 1440) | int }}d{% endif %}
+          </td>
+          <td>
+            {% if not q.enabled %}
+              <span class="pill danger"><span class="pill-dot"></span>Disabled</span>
+            {% elif q.last_run_status == 'error' %}
+              <span class="pill pending"><span class="pill-dot"></span>Error</span>
+            {% else %}
+              <span class="pill filled"><span class="pill-dot"></span>Active</span>
+            {% endif %}
+          </td>
+          <td class="text-muted small">
+            {% if q.last_run_at %}{{ q.last_run_at | localdt('%d %b %H:%M') }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-muted" style="padding:16px">No saved searches yet.</p>
+    {% endif %}
+  </div>
+</div>
+
 <script>
 document.querySelectorAll('.js-confirm-delete').forEach(function (form) {
   form.addEventListener('submit', function (e) {

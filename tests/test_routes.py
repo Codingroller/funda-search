@@ -579,6 +579,54 @@ async def test_admin_panel_forbidden_to_non_admin(authed2):
     assert r.status_code == 403
 
 
+async def test_admin_shows_saved_searches_section(authed):
+    from app.models import SavedQuery
+    import json
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(User).where(User.username == _USERNAME))
+        user = result.scalar_one()
+        db.add(SavedQuery(
+            user_id=user.id,
+            name="Utrecht family home",
+            params_json=json.dumps({"location": ["Utrecht", "Zeist"], "category": "buy"}),
+            interval_minutes=60,
+        ))
+        await db.commit()
+
+    r = await authed.get("/admin")
+    assert r.status_code == 200
+    assert b"Saved searches" in r.content
+    assert b"Utrecht family home" in r.content
+    assert b"Utrecht" in r.content
+
+
+async def test_admin_shows_searches_from_multiple_users(authed, authed2):
+    from app.models import SavedQuery
+    import json
+    async with AsyncSessionLocal() as db:
+        admin = (await db.execute(select(User).where(User.username == _USERNAME))).scalar_one()
+        user2 = (await db.execute(select(User).where(User.username == _USERNAME2))).scalar_one()
+        db.add(SavedQuery(
+            user_id=admin.id,
+            name="Admin search",
+            params_json=json.dumps({"location": ["Amsterdam"], "category": "buy"}),
+            interval_minutes=60,
+        ))
+        db.add(SavedQuery(
+            user_id=user2.id,
+            name="User2 search",
+            params_json=json.dumps({"location": ["Rotterdam"], "category": "buy"}),
+            interval_minutes=120,
+        ))
+        await db.commit()
+
+    r = await authed.get("/admin")
+    assert r.status_code == 200
+    assert b"Admin search" in r.content
+    assert b"User2 search" in r.content
+    assert _USERNAME2.encode() in r.content
+
+
 async def test_admin_generate_invite(authed):
     r = await authed.post("/admin/invite")
     assert r.status_code == 200
