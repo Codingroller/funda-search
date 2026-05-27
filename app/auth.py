@@ -1,8 +1,13 @@
+from datetime import timedelta
+
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from fastapi import Depends, HTTPException, Request
 
 from app.db import AsyncSessionLocal
+from app.time_utils import as_utc, now_utc
+
+_ACTIVE_THROTTLE = timedelta(minutes=5)
 
 _ph = PasswordHasher()
 
@@ -37,6 +42,16 @@ async def require_auth(request: Request):
     user = await get_current_user(request)
     if not user:
         raise UnauthenticatedException()
+    now = now_utc()
+    last = as_utc(user.last_active_at)
+    if last is None or (now - last) > _ACTIVE_THROTTLE:
+        from app.models import User
+        async with AsyncSessionLocal() as db:
+            u = await db.get(User, user.id)
+            if u:
+                u.last_active_at = now
+                await db.commit()
+        user.last_active_at = now
     return user
 
 

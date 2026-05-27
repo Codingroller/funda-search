@@ -10,9 +10,10 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.funda_client import get_listing_detail, search_listings
+from app.time_utils import now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ def _is_valid(comp: dict, subject: dict) -> bool:
 
 
 def _filter_sold_recent(comps: list[dict], days: int = _SOLD_LOOKBACK_DAYS) -> list[dict]:
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = now_utc() - timedelta(days=days)
     result = []
     for c in comps:
         pub = c.get("publication_date")
@@ -48,7 +49,7 @@ def _filter_sold_recent(comps: list[dict], days: int = _SOLD_LOOKBACK_DAYS) -> l
             result.append(c)
             continue
         try:
-            if datetime.fromisoformat(pub[:10]) >= cutoff:
+            if datetime.fromisoformat(pub[:10]).replace(tzinfo=timezone.utc) >= cutoff:
                 result.append(c)
         except (ValueError, TypeError):
             result.append(c)

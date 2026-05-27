@@ -1,6 +1,6 @@
-from datetime import datetime
 from sqlalchemy import Column, Float, Index, Integer, String, Boolean, DateTime, ForeignKey, Text
 from app.db import Base
+from app.time_utils import now_utc
 
 
 class User(Base):
@@ -11,7 +11,8 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     ntfy_topic = Column(String, nullable=True, default="")  # orphaned — kept for existing DBs
     is_admin = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
+    last_active_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class PushSubscription(Base):
@@ -24,8 +25,8 @@ class PushSubscription(Base):
     p256dh = Column(String, nullable=False)
     auth = Column(String, nullable=False)
     user_agent = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class InviteToken(Base):
@@ -33,9 +34,9 @@ class InviteToken(Base):
 
     token = Column(String, primary_key=True)
     created_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    expires_at = Column(DateTime, nullable=False, index=True)
-    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    used_at = Column(DateTime(timezone=True), nullable=True)
     used_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
 
@@ -49,10 +50,10 @@ class SavedQuery(Base):
     params_json = Column(Text, nullable=False)
     interval_minutes = Column(Integer, default=60)
     enabled = Column(Boolean, default=True)
-    last_run_at = Column(DateTime, nullable=True)
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
     last_run_status = Column(String, nullable=True)
     consecutive_errors = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=now_utc)
 
 
 class SeenListing(Base):
@@ -64,7 +65,7 @@ class SeenListing(Base):
         primary_key=True,
     )
     global_id = Column(String, primary_key=True)
-    first_seen_at = Column(DateTime, default=datetime.utcnow)
+    first_seen_at = Column(DateTime(timezone=True), default=now_utc)
 
 
 class RunLog(Base):
@@ -75,8 +76,8 @@ class RunLog(Base):
 
     id = Column(Integer, primary_key=True)
     query_id = Column(Integer, ForeignKey("saved_queries.id", ondelete="CASCADE"), index=True)
-    started_at = Column(DateTime, nullable=False)
-    finished_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    finished_at = Column(DateTime(timezone=True), nullable=True)
     status = Column(String)
     result_count = Column(Integer, default=0)
     new_count = Column(Integer, default=0)
@@ -97,7 +98,7 @@ class CbsBuurt(Base):
     bbox_max_lon = Column(Float, nullable=False)
     bbox_max_lat = Column(Float, nullable=False)
     properties_json = Column(Text, nullable=False)
-    fetched_at = Column(DateTime, default=datetime.utcnow)
+    fetched_at = Column(DateTime(timezone=True), default=now_utc)
 
 
 class CbsWijk(Base):
@@ -111,7 +112,7 @@ class CbsWijk(Base):
     bbox_max_lon = Column(Float, nullable=False)
     bbox_max_lat = Column(Float, nullable=False)
     properties_json = Column(Text, nullable=False)
-    fetched_at = Column(DateTime, default=datetime.utcnow)
+    fetched_at = Column(DateTime(timezone=True), default=now_utc)
 
 
 class CbsGemeente(Base):
@@ -121,7 +122,7 @@ class CbsGemeente(Base):
     gemeentenaam = Column(String, nullable=True)
     crime_json = Column(Text, nullable=False, default="{}")
     safety_json = Column(Text, nullable=False, default="{}")
-    fetched_at = Column(DateTime, default=datetime.utcnow)
+    fetched_at = Column(DateTime(timezone=True), default=now_utc)
 
 
 class ListingCache(Base):
@@ -129,7 +130,7 @@ class ListingCache(Base):
 
     global_id = Column(String, primary_key=True)
     payload_json = Column(Text, nullable=False)
-    fetched_at = Column(DateTime, default=datetime.utcnow)
+    fetched_at = Column(DateTime(timezone=True), default=now_utc)
 
 
 class SharingConnection(Base):
@@ -144,8 +145,8 @@ class SharingConnection(Base):
     to_user_id   = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
                           nullable=False, index=True)
     status       = Column(String, default="pending")  # pending | accepted | declined
-    created_at   = Column(DateTime, default=datetime.utcnow)
-    responded_at = Column(DateTime, nullable=True)
+    created_at   = Column(DateTime(timezone=True), default=now_utc)
+    responded_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class LikedListing(Base):
@@ -159,7 +160,7 @@ class LikedListing(Base):
     viewing_date = Column(String, nullable=True)       # ISO "YYYY-MM-DD"
     walter_living_bid = Column(Integer, nullable=True) # whole euros
     bid_amount = Column(Integer, nullable=True)        # whole euros
-    liked_at = Column(DateTime, default=datetime.utcnow)
+    liked_at = Column(DateTime(timezone=True), default=now_utc)
     listing_status = Column(String, nullable=True)     # active | sold | under_reservation | withdrawn
 
 
@@ -174,7 +175,7 @@ class WozValue(Base):
     latest_woz_eur = Column(Integer, nullable=True)
     latest_peildatum = Column(String, nullable=True)   # ISO date YYYY-MM-DD
     history_json = Column(Text, nullable=False, default="[]")
-    fetched_at = Column(DateTime, default=datetime.utcnow)
+    fetched_at = Column(DateTime(timezone=True), default=now_utc)
     last_error = Column(String, nullable=True)         # set on failure for negative-cache
 
 
@@ -190,7 +191,7 @@ class BidEstimate(Base):
     median_price_per_m2 = Column(Float, nullable=True)
     confidence = Column(String, default="normal")   # normal | low | unavailable
     adjustments_json = Column(Text, nullable=False, default="[]")
-    computed_at = Column(DateTime, default=datetime.utcnow)
+    computed_at = Column(DateTime(timezone=True), default=now_utc)
     # v2.0 columns (nullable for backward compat with old rows)
     model_version = Column(String, nullable=True)
     tier = Column(String, nullable=True)

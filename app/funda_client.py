@@ -1,7 +1,7 @@
 import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 try:
     from funda import Funda, ListingNotFound  # noqa: F401 — imported for testability
@@ -12,6 +12,7 @@ except ImportError:
 from app.db import AsyncSessionLocal
 from app.image_cache import cache_hero_sync, cache_photo_sync
 from app.models import ListingCache
+from app.time_utils import as_utc, now_utc
 
 _pool = ThreadPoolExecutor(max_workers=4)
 _LISTING_TTL = timedelta(hours=24)
@@ -187,7 +188,7 @@ async def get_listing_detail(global_id: str, force_refresh: bool = False) -> dic
     if not force_refresh:
         async with AsyncSessionLocal() as db:
             row = await db.get(ListingCache, global_id)
-            if row and (datetime.utcnow() - row.fetched_at) < _LISTING_TTL:
+            if row and (now_utc() - as_utc(row.fetched_at)) < _LISTING_TTL:
                 return json.loads(row.payload_json)
 
     loop = asyncio.get_running_loop()
@@ -197,7 +198,7 @@ async def get_listing_detail(global_id: str, force_refresh: bool = False) -> dic
     )
 
     async with AsyncSessionLocal() as db:
-        now = datetime.utcnow()
+        now = now_utc()
         row = await db.get(ListingCache, global_id)
         if row:
             row.payload_json = json.dumps(payload)

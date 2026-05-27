@@ -456,7 +456,7 @@ async def test_listing_card_contains_view_details_link(authed, monkeypatch):
     import app.routes.queries as qroutes
     import json
     from app.models import SavedQuery, RunLog
-    from datetime import datetime
+    from app.time_utils import now_utc
 
     monkeypatch.setattr(qroutes, "add_query_job", lambda *a, **kw: None)
 
@@ -471,7 +471,7 @@ async def test_listing_card_contains_view_details_link(authed, monkeypatch):
         from sqlalchemy import select
         result = await db.execute(select(SavedQuery).where(SavedQuery.name == "Card Link Test"))
         query = result.scalar_one()
-        now = datetime.utcnow()
+        now = now_utc()
         listing = {
             "global_id": "99887766",
             "url": "https://funda.nl/1",

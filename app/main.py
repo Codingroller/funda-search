@@ -55,11 +55,43 @@ async def _run_migrations(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_sharing_from_user ON sharing_connections(from_user_id)",
         "CREATE INDEX IF NOT EXISTS ix_sharing_to_user ON sharing_connections(to_user_id)",
         "CREATE INDEX IF NOT EXISTS ix_invite_expires ON invite_tokens(expires_at)",
+        "ALTER TABLE users ADD COLUMN last_login_at DATETIME",
+        "ALTER TABLE users ADD COLUMN last_active_at DATETIME",
     ]:
         try:
             await conn.execute(text(stmt))
         except Exception:
-            pass  # column already exists
+            pass  # column already exists / index already exists
+
+    # Backfill naive UTC timestamps to aware (+00:00) for DateTime(timezone=True) migration.
+    # Each statement is idempotent: the NOT LIKE guard skips rows already backfilled.
+    _TZ_COLS = [
+        ("users",               ["created_at", "last_active_at"]),
+        ("push_subscriptions",  ["created_at", "last_used_at"]),
+        ("invite_tokens",       ["created_at", "expires_at", "used_at"]),
+        ("saved_queries",       ["created_at", "last_run_at"]),
+        ("seen_listings",       ["first_seen_at"]),
+        ("run_logs",            ["started_at", "finished_at"]),
+        ("cbs_buurt",           ["fetched_at"]),
+        ("cbs_wijk",            ["fetched_at"]),
+        ("cbs_gemeente",        ["fetched_at"]),
+        ("listing_cache",       ["fetched_at"]),
+        ("sharing_connections", ["created_at", "responded_at"]),
+        ("liked_listings",      ["liked_at"]),
+        ("woz_values",          ["fetched_at"]),
+        ("bid_estimates",       ["computed_at"]),
+    ]
+    for table, cols in _TZ_COLS:
+        for col in cols:
+            try:
+                await conn.execute(text(
+                    f"UPDATE {table} SET {col} = {col} || '+00:00'"
+                    f" WHERE {col} IS NOT NULL"
+                    f"   AND {col} NOT LIKE '%+%'"
+                    f"   AND {col} NOT LIKE '%Z'"
+                ))
+            except Exception:
+                pass  # table may not exist yet on fresh install
 
     # Purge run_logs that predate their query's creation (orphans from missing
     # FK cascade when foreign_keys PRAGMA was off on older installs).

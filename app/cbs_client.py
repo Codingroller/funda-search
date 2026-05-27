@@ -8,13 +8,14 @@ Results are persisted to SQLite (cbs_buurt / cbs_wijk) with a 365-day TTL.
 
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import httpx
 from sqlalchemy import select
 
 from app.db import AsyncSessionLocal
 from app.models import CbsBuurt, CbsGemeente, CbsWijk
+from app.time_utils import as_utc, now_utc
 
 _ODATA_BASE = "https://datasets.cbs.nl/odata/v1/CBS/86165NED"
 _CRIME_BASE = "https://datasets.cbs.nl/odata/v1/CBS/83648NED"
@@ -23,8 +24,8 @@ _TTL_DAYS = 365
 _TTL_CRIME_DAYS = 180
 
 
-def _is_stale(fetched_at: datetime) -> bool:
-    return datetime.utcnow() - fetched_at > timedelta(days=_TTL_DAYS)
+def _is_stale(fetched_at) -> bool:
+    return now_utc() - as_utc(fetched_at) > timedelta(days=_TTL_DAYS)
 
 
 # ---------------------------------------------------------------------------
@@ -321,7 +322,7 @@ async def get_neighbourhood_stats(neighbourhood_identifier: str) -> dict | None:
 
     gemeente = (buurt_obs or wijk_obs).get("GM000C", "")
 
-    now = datetime.utcnow()
+    now = now_utc()
     async with AsyncSessionLocal() as db:
         if buurt_obs:
             row = await db.get(CbsBuurt, buurtcode)
@@ -435,7 +436,7 @@ async def get_crime_stats(buurtcode: str) -> dict | None:
 
     async with AsyncSessionLocal() as db:
         row = await db.get(CbsGemeente, gemeente_code)
-        if row and (datetime.utcnow() - row.fetched_at) < ttl:
+        if row and (now_utc() - as_utc(row.fetched_at)) < ttl:
             return {
                 "gemeente": gemeente_code,
                 "gemeentenaam": row.gemeentenaam,
@@ -477,7 +478,7 @@ async def get_crime_stats(buurtcode: str) -> dict | None:
         "pct_assault_victim":  _v(safety_obs, "D003829_4"),
     }
 
-    now = datetime.utcnow()
+    now = now_utc()
     async with AsyncSessionLocal() as db:
         row = await db.get(CbsGemeente, gemeente_code)
         crime_str, safety_str = json.dumps(crime), json.dumps(safety)

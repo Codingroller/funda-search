@@ -8,9 +8,10 @@ from __future__ import annotations
 import json
 import logging
 import math
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from app.bid_comps import gather_cohort
+from app.time_utils import as_utc, now_utc
 from app.bid_explain import build_explanation
 from app.bid_model import (
     CURRENT_MODEL_VERSION,
@@ -43,7 +44,7 @@ def _fmt_eur(amount: int | None) -> str:
 
 
 def _weights_for_cohort(cohort) -> list[float]:
-    now = datetime.utcnow()
+    now = now_utc()
     ws: list[float] = [1.0] * len(cohort.active)
     for c in cohort.sold:
         pub = c.get("publication_date")
@@ -72,7 +73,7 @@ async def _upsert(
     r2: float | None,
     residual_std: float | None,
 ) -> None:
-    now = datetime.utcnow()
+    now = now_utc()
     comparables_count = n_active + n_sold
     row = await db.get(BidEstimate, global_id)
     if row:
@@ -206,7 +207,7 @@ def _row_to_dict(row: BidEstimate) -> dict:
 async def get_cached_estimate(global_id: str) -> dict | None:
     async with AsyncSessionLocal() as db:
         row = await db.get(BidEstimate, global_id)
-        if row and (datetime.utcnow() - row.computed_at) < _BID_TTL:
+        if row and (now_utc() - as_utc(row.computed_at)) < _BID_TTL:
             # Invalidate rows computed with an older model version
             if getattr(row, "model_version", None) != CURRENT_MODEL_VERSION:
                 return None

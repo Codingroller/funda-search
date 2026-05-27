@@ -21,6 +21,7 @@ from sqlalchemy import select
 
 from app.db import AsyncSessionLocal
 from app.models import WozValue
+from app.time_utils import as_utc, now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ async def get_woz(
     async with AsyncSessionLocal() as db:
         row = await db.get(WozValue, global_id)
         if row:
-            age = datetime.utcnow() - row.fetched_at
+            age = now_utc() - as_utc(row.fetched_at)
             # Positive hit cached within TTL
             if row.latest_woz_eur and age < _TTL:
                 return {
@@ -67,7 +68,7 @@ async def get_woz(
 
     async with AsyncSessionLocal() as db:
         row = await db.get(WozValue, global_id)
-        now = datetime.utcnow()
+        now = now_utc()
         if result:
             values = dict(
                 postcode=postcode,
@@ -197,7 +198,7 @@ async def _maybe_notify_block() -> None:
     """
     global _last_block_notified
 
-    now = datetime.utcnow()
+    now = now_utc()
     if _last_block_notified and (now - _last_block_notified) < _block_notify_interval:
         return
 

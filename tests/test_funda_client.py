@@ -5,8 +5,10 @@ get_listing_detail (DB cache hit/miss), and _fmt_price_per_m2.
 All pyfunda and image-cache calls are mocked — no network I/O.
 """
 import json
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
+
+from app.time_utils import now_utc
 
 import pytest
 
@@ -381,7 +383,7 @@ class TestGetListingDetail:
             db.add(ListingCache(
                 global_id="11110003",
                 payload_json=json.dumps({"global_id": "11110003", "city": "Cached"}),
-                fetched_at=datetime.utcnow(),
+                fetched_at=now_utc(),
             ))
             await db.commit()
 
@@ -398,7 +400,7 @@ class TestGetListingDetail:
             db.add(ListingCache(
                 global_id="11110004",
                 payload_json=json.dumps({"global_id": "11110004", "city": "OldData"}),
-                fetched_at=datetime.utcnow() - timedelta(hours=25),
+                fetched_at=now_utc() - timedelta(hours=25),
             ))
             await db.commit()
 

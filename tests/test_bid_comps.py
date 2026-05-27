@@ -1,7 +1,7 @@
 """Unit tests for bid_comps using monkeypatched search_listings / get_listing_detail."""
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import patch
 from app.bid_comps import (
     CompCohort,
@@ -11,7 +11,8 @@ from app.bid_comps import (
 )
 
 # Use dynamic dates so tests don't break as time passes
-_RECENT = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
+from app.time_utils import now_utc
+_RECENT = (now_utc() - timedelta(days=30)).strftime("%Y-%m-%d")
 _STALE  = "2020-01-01"
 
 

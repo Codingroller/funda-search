@@ -1,10 +1,9 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 
 from app.auth import hash_password
+from app.time_utils import as_utc, now_utc
 from app.db import AsyncSessionLocal
 from app.models import InviteToken, User
 from app.templates_env import templates
@@ -20,7 +19,7 @@ def _invalid(request, token="", error=""):
 
 async def _get_valid_token(db, token: str) -> InviteToken | None:
     invite = await db.get(InviteToken, token)
-    if not invite or invite.used_at or invite.expires_at < datetime.utcnow():
+    if not invite or invite.used_at or as_utc(invite.expires_at) < now_utc():
         return None
     return invite
 
@@ -66,7 +65,7 @@ async def signup_post(
         db.add(user)
         await db.flush()
 
-        invite.used_at = datetime.utcnow()
+        invite.used_at = now_utc()
         invite.used_by = user.id
         await db.commit()
         user_id = user.id

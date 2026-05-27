@@ -50,6 +50,8 @@
           <th>Role</th>
           <th>Searches</th>
           <th>Joined</th>
+          <th>Last active</th>
+          <th>Last notified</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -72,6 +74,12 @@
           </td>
           <td>{{ row.query_count }}</td>
           <td>{{ u.created_at | localdt('%d %b %Y') }}</td>
+          <td class="text-muted small">
+            {% if u.last_active_at %}{{ u.last_active_at | localdt('%d-%m-%Y %H:%M') }}{% else %}—{% endif %}
+          </td>
+          <td class="text-muted small">
+            {% if row.last_notif %}{{ row.last_notif | localdt('%d %b %H:%M') }}{% else %}—{% endif %}
+          </td>
           <td>
             {% if u.id != current_user.id %}
             <div style="display:flex;gap:6px">

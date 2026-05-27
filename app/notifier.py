@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 
 from pywebpush import webpush, WebPushException
 from sqlalchemy import delete, select, update
@@ -10,6 +9,7 @@ from sqlalchemy import delete, select, update
 from app.config import settings
 from app.db import AsyncSessionLocal
 from app.models import PushSubscription
+from app.time_utils import now_utc
 
 log = logging.getLogger(__name__)
 _pool = ThreadPoolExecutor(max_workers=4)
@@ -79,7 +79,7 @@ async def notify_user(
     dead = [rows[i].endpoint for i, s in enumerate(statuses) if s in (404, 410)]
     alive = [rows[i].endpoint for i, s in enumerate(statuses) if s is None]
 
-    now = datetime.utcnow()
+    now = now_utc()
     async with AsyncSessionLocal() as db:
         if dead:
             await db.execute(

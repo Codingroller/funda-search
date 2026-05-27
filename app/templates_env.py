@@ -12,10 +12,12 @@ templates.env.filters["fromjson"] = json.loads
 
 
 def _localdt(dt, fmt: str = "%d %b %H:%M") -> str:
-    """Convert a naive UTC datetime to Amsterdam local time and format it."""
+    """Convert a UTC datetime to Amsterdam local time and format it."""
     if dt is None:
         return ""
-    return dt.replace(tzinfo=timezone.utc).astimezone(_AMS).strftime(fmt)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(_AMS).strftime(fmt)
 
 
 templates.env.filters["localdt"] = _localdt

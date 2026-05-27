@@ -1,13 +1,14 @@
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
 
 from app.auth import require_admin
+from app.time_utils import now_utc
 from app.db import AsyncSessionLocal
-from app.models import InviteToken, SavedQuery, User
+from app.models import InviteToken, PushSubscription, SavedQuery, User
 from app.scheduler import remove_query_job
 from app.templates_env import templates
 
@@ -25,7 +26,7 @@ async def _admin_ctx(request: Request, current_user: User, **extra):
         tokens = (await db.execute(
             select(InviteToken)
             .where(InviteToken.used_at == None)  # noqa: E711
-            .where(InviteToken.expires_at > datetime.utcnow())
+            .where(InviteToken.expires_at > now_utc())
             .order_by(InviteToken.created_at.desc())
         )).scalars().all()
 
@@ -35,7 +36,14 @@ async def _admin_ctx(request: Request, current_user: User, **extra):
             .order_by(User.username, SavedQuery.name)
         )).all()
 
-    users = [{"user": u, "query_count": query_counts.get(u.id, 0)} for u in users_raw]
+        notif_raw = await db.execute(
+            select(PushSubscription.user_id, func.max(PushSubscription.last_used_at))
+            .group_by(PushSubscription.user_id)
+        )
+        last_notif = dict(notif_raw.all())
+
+    users = [{"user": u, "query_count": query_counts.get(u.id, 0),
+               "last_notif": last_notif.get(u.id)} for u in users_raw]
     queries = [{"query": row.SavedQuery, "username": row.username} for row in queries_raw]
     return templates.TemplateResponse(
         request, "admin.html",
@@ -52,7 +60,7 @@ async def admin_panel(request: Request, current_user: User = Depends(require_adm
 @router.post("/admin/invite", response_class=HTMLResponse)
 async def create_invite(request: Request, current_user: User = Depends(require_admin)):
     token = secrets.token_urlsafe(32)
-    expires = datetime.utcnow() + timedelta(days=7)
+    expires = now_utc() + timedelta(days=7)
     async with AsyncSessionLocal() as db:
         db.add(InviteToken(token=token, created_by=current_user.id, expires_at=expires))
         await db.commit()

@@ -1,6 +1,6 @@
 import asyncio
 import json
-from datetime import datetime
+from app.time_utils import now_utc
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
@@ -350,7 +350,7 @@ async def send_invite(
                     existing.status = "pending"
                     existing.from_user_id = current_user.id
                     existing.to_user_id = target.id
-                    existing.created_at = datetime.utcnow()
+                    existing.created_at = now_utc()
                     existing.responded_at = None
             else:
                 db.add(SharingConnection(from_user_id=current_user.id, to_user_id=target.id))
@@ -374,7 +374,7 @@ async def accept_invite(
         if not invite or invite.to_user_id != current_user.id:
             raise HTTPException(404)
         invite.status = "accepted"
-        invite.responded_at = datetime.utcnow()
+        invite.responded_at = now_utc()
         await db.commit()
     return HTMLResponse("", headers={"HX-Refresh": "true"})
 
@@ -390,7 +390,7 @@ async def decline_invite(
         if not invite or invite.to_user_id != current_user.id:
             raise HTTPException(404)
         invite.status = "declined"
-        invite.responded_at = datetime.utcnow()
+        invite.responded_at = now_utc()
         await db.commit()
         ctx = await _sharing_context(current_user, db)
         ctx["current_user"] = current_user

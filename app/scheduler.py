@@ -8,6 +8,7 @@ from sqlalchemy import delete, select
 
 from app.db import AsyncSessionLocal
 from app.models import PushSubscription, SavedQuery, SeenListing, RunLog, User
+from app.time_utils import as_utc, now_utc
 
 log = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler(timezone="Europe/Amsterdam")
@@ -58,7 +59,7 @@ async def run_query_job(query_id: int) -> None:
         params = json.loads(query.params_json)
         if len(params.get("location", [])) > 1 and "radius_km" in params:
             params.pop("radius_km")
-        started_at = datetime.utcnow()
+        started_at = now_utc()
 
         try:
             from app.funda_client import search_listings
@@ -107,7 +108,7 @@ async def run_query_job(query_id: int) -> None:
                 RunLog(
                     query_id=query_id,
                     started_at=started_at,
-                    finished_at=datetime.utcnow(),
+                    finished_at=now_utc(),
                     status="ok",
                     result_count=len(listings),
                     new_count=len(new_listings),
@@ -116,7 +117,7 @@ async def run_query_job(query_id: int) -> None:
                 )
             )
 
-            query.last_run_at = datetime.utcnow()
+            query.last_run_at = now_utc()
             query.last_run_status = "ok"
             query.consecutive_errors = 0
 
@@ -136,7 +137,7 @@ async def run_query_job(query_id: int) -> None:
                 q2 = await db2.get(SavedQuery, query_id)
                 if q2:
                     q2.consecutive_errors = (q2.consecutive_errors or 0) + 1
-                    q2.last_run_at = datetime.utcnow()
+                    q2.last_run_at = now_utc()
                     q2.last_run_status = "error"
                     if q2.consecutive_errors >= 5:
                         q2.enabled = False
@@ -149,7 +150,7 @@ async def run_query_job(query_id: int) -> None:
                         RunLog(
                             query_id=query_id,
                             started_at=started_at,
-                            finished_at=datetime.utcnow(),
+                            finished_at=now_utc(),
                             status="error",
                             result_count=0,
                             new_count=0,
@@ -171,10 +172,10 @@ def add_query_job(query_id: int, interval_minutes: int, last_run_at: datetime | 
     next_run_time = None
     if last_run_at is not None:
         ideal = last_run_at + timedelta(minutes=interval_minutes)
-        now = datetime.utcnow()
+        now = now_utc()
         # If the ideal time has passed, run soon (30 s after startup) instead of
         # waiting another full interval.
-        next_run_time = ideal if ideal > now else now + timedelta(seconds=30)
+        next_run_time = ideal if as_utc(ideal) > now else now + timedelta(seconds=30)
 
     scheduler.add_job(
         run_query_job,
@@ -197,7 +198,7 @@ def remove_query_job(query_id: int) -> None:
 
 async def cleanup_old_data() -> None:
     """Purge stale data: seen_listings/run_logs > 90 days, push_subscriptions unused > 1 year."""
-    now = datetime.utcnow()
+    now = now_utc()
     cutoff_90d = now - timedelta(days=90)
     cutoff_1y = now - timedelta(days=365)
     async with AsyncSessionLocal() as db:
