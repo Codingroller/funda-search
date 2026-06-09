@@ -14,7 +14,10 @@ import numpy as np
 CURRENT_MODEL_VERSION = "v2.0"
 
 _ENERGY_ORDER = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]
-_FEATURE_ORDER = ["log_area", "log_plot", "has_plot", "energy_rank", "year_built", "is_apartment"]
+# NOTE: has_plot was removed — it was collinear with log_plot (which has a +50
+# floor) and is_apartment, which made the regression flip its sign and report a
+# negative "garden presence" effect for houses that have a garden.
+_FEATURE_ORDER = ["log_area", "log_plot", "energy_rank", "year_built", "is_apartment"]
 
 _N_EFF_OLS = 12.0      # pure OLS above this
 _N_EFF_RIDGE = 5.0     # ridge above this, median-fallback below
@@ -41,16 +44,31 @@ def _fmt_eur(amount: int | None) -> str:
 
 def _extract_features(row: dict) -> dict[str, float | None]:
     area = row.get("living_area")
-    plot = row.get("plot_area") or 0
     year_raw = row.get("construction_year")
     obj = str(row.get("object_type") or "").lower()
+    is_apartment = "apartment" in obj
+
+    # A missing plot_area on a non-apartment means "unknown", not "no garden".
+    # Treating it as 0 wrongly dragged houses down to the apartment baseline, so
+    # impute it (None → cohort mean). Apartments legitimately have no plot.
+    plot_raw = row.get("plot_area")
+    if plot_raw is None and not is_apartment:
+        log_plot = None
+    else:
+        log_plot = math.log((plot_raw or 0) + 50)   # +50 floor: apartment → log(50)≈3.9
+
+    # Only score energy when the label is a known grade. Missing/unknown labels
+    # are imputed (None → cohort mean) rather than silently treated as "C",
+    # which used to skew the cohort average.
+    label = row.get("energy_label")
+    energy_rank = float(_energy_rank(label)) if (label and label in _ENERGY_ORDER) else None
+
     return {
         "log_area": math.log(area) if area else None,
-        "log_plot": math.log(plot + 50),    # +50 floor: apartment → log(50)≈3.9
-        "has_plot": 1.0 if plot > 0 else 0.0,
-        "energy_rank": float(_energy_rank(row.get("energy_label"))),
+        "log_plot": log_plot,
+        "energy_rank": energy_rank,
         "year_built": (int(year_raw) - 1970) / 50 if year_raw is not None else None,
-        "is_apartment": 1.0 if "apartment" in obj else 0.0,
+        "is_apartment": 1.0 if is_apartment else 0.0,
     }
 
 
