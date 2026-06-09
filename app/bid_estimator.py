@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 _BID_TTL = timedelta(days=7)
 _computing: set[str] = set()   # global_ids currently being computed
 _DECAY_DAYS = 547.5            # 1.5-year decay constant for sold comps
-_PC4_WEIGHT_BOOST = 4.0        # upweight comps in the subject's own PC4 (neighbourhood anchor)
+_PC4_WEIGHT_BOOST = 8.0        # upweight comps in the subject's own PC4 (neighbourhood anchor)
 
 
 def _is_sold(subject: dict) -> bool:

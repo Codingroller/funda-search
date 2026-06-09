@@ -32,6 +32,18 @@ class CompCohort:
     notes: list[str] = field(default_factory=list)
 
 
+def _pc4_first(rows: list[dict], pc4: str | None) -> list[dict]:
+    """Order PC4-matching comps first so they survive the _MAX_* cap in the
+    city-wide fallback. The neighbourhood weighting in bid_estimator can only
+    anchor the estimate if the (usually few) local comps are actually present
+    in the cohort rather than truncated out by the 'newest' sort."""
+    if not pc4:
+        return rows
+    head = [c for c in rows if (c.get("postcode") or "")[:4] == pc4]
+    head_ids = {c.get("global_id") for c in head}
+    return head + [c for c in rows if c.get("global_id") not in head_ids]
+
+
 def _is_valid(comp: dict, subject: dict) -> bool:
     return (
         comp.get("global_id") != subject.get("global_id")
@@ -129,7 +141,7 @@ async def gather_cohort(subject: dict, *, target_n: int = 25) -> CompCohort:
         use_pc4 = True
         notes.append(f"{len(active)} active listing{'s' if len(active) != 1 else ''} in PC4 {pc4}")
     else:
-        active = valid_active[:_MAX_ACTIVE]
+        active = _pc4_first(valid_active, pc4)[:_MAX_ACTIVE]
         use_pc4 = False
         if pc4 and pc4_active:
             notes.append(
@@ -142,7 +154,7 @@ async def gather_cohort(subject: dict, *, target_n: int = 25) -> CompCohort:
             notes.append(f"{len(active)} active listings in {city}")
 
     # Choose sold pool and enrich with detail
-    sold_candidates = (pc4_sold if use_pc4 else valid_sold)[:_MAX_SOLD]
+    sold_candidates = (pc4_sold if use_pc4 else _pc4_first(valid_sold, pc4))[:_MAX_SOLD]
     enriched_sold = await _enrich_sold(sold_candidates)
     sold = _filter_sold_recent(enriched_sold)
     if sold:
