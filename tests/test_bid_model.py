@@ -173,6 +173,32 @@ class TestPredict:
 
 # ── TestConfidenceLevel ───────────────────────────────────────────────────
 
+class TestGardenNonNegative:
+    def test_has_plot_coefficient_never_negative(self):
+        # Build a cohort where having a plot spuriously correlates with LOWER
+        # price (e.g. plotted houses are older/cheaper here). The guard must
+        # prevent a negative has_plot coefficient.
+        rows = []
+        for i in range(10):
+            rows.append(_row(price=600_000, plot=0, obj="apartment", area=100))   # no plot, pricey
+        for i in range(10):
+            rows.append(_row(price=400_000, plot=150, obj="house", area=100))      # plot, cheaper
+        m = fit(rows, [1.0] * len(rows))
+        assert m.coef.get("has_plot", 0.0) >= 0.0
+
+    def test_garden_adds_value_when_correlated_up(self):
+        # When a plot genuinely correlates with higher price, the premium applies.
+        rows = []
+        for i in range(10):
+            rows.append(_row(price=400_000, plot=0, obj="apartment", area=100))
+        for i in range(10):
+            rows.append(_row(price=600_000, plot=150, obj="house", area=100))
+        m = fit(rows, [1.0] * len(rows))
+        _, rec_plot, _ = predict(m, _row(plot=150, obj="house", area=100))
+        _, rec_none, _ = predict(m, _row(plot=0, obj="apartment", area=100))
+        assert rec_plot >= rec_none
+
+
 class TestConfidenceLevel:
     def test_fallback_is_low(self):
         m = fit(_cohort(3), [1.0] * 3)

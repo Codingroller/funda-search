@@ -14,10 +14,13 @@ import numpy as np
 CURRENT_MODEL_VERSION = "v2.0"
 
 _ENERGY_ORDER = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]
-# NOTE: has_plot was removed — it was collinear with log_plot (which has a +50
-# floor) and is_apartment, which made the regression flip its sign and report a
-# negative "garden presence" effect for houses that have a garden.
-_FEATURE_ORDER = ["log_area", "log_plot", "energy_rank", "year_built", "is_apartment"]
+# has_plot is collinear with log_plot (+50 floor) and is_apartment, so the
+# unconstrained regression could hand it a negative coefficient and report a
+# backwards "garden lowers price" effect. fit() guards against that: if the
+# fitted has_plot coefficient is negative it is dropped and the model refit, so
+# a garden can only ever add value (or be neutral), never subtract.
+_FEATURE_ORDER = ["log_area", "log_plot", "has_plot", "energy_rank", "year_built", "is_apartment"]
+_NON_NEGATIVE_FEATURES = ("has_plot",)   # coefficients constrained to ≥ 0
 
 _N_EFF_OLS = 12.0      # pure OLS above this
 _N_EFF_RIDGE = 5.0     # ridge above this, median-fallback below
@@ -53,9 +56,11 @@ def _extract_features(row: dict) -> dict[str, float | None]:
     # impute it (None → cohort mean). Apartments legitimately have no plot.
     plot_raw = row.get("plot_area")
     if plot_raw is None and not is_apartment:
-        log_plot = None
+        log_plot = None    # unknown house plot → impute to cohort mean
+        has_plot = None
     else:
         log_plot = math.log((plot_raw or 0) + 50)   # +50 floor: apartment → log(50)≈3.9
+        has_plot = 1.0 if (plot_raw or 0) > 0 else 0.0
 
     # Only score energy when the label is a known grade. Missing/unknown labels
     # are imputed (None → cohort mean) rather than silently treated as "C",
@@ -66,6 +71,7 @@ def _extract_features(row: dict) -> dict[str, float | None]:
     return {
         "log_area": math.log(area) if area else None,
         "log_plot": log_plot,
+        "has_plot": has_plot,
         "energy_rank": energy_rank,
         "year_built": (int(year_raw) - 1970) / 50 if year_raw is not None else None,
         "is_apartment": 1.0 if is_apartment else 0.0,
@@ -129,48 +135,57 @@ def fit(rows: list[dict], weights: list[float]) -> FittedModel:
 
     # Drop constant features (std ≈ 0); they can't be estimated
     feature_used = [f for f in _FEATURE_ORDER if stds[f] > 1e-8]
-    n_features = len(feature_used)
 
-    # Build design matrix: z-score each feature; impute missing with cohort mean (→ z=0)
-    X_rows = []
-    for f in feats:
-        X_rows.append([
-            ((f[fname] if f[fname] is not None else means[fname]) - means[fname]) / stds[fname]
-            for fname in feature_used
-        ])
-
-    X = np.array(X_rows, dtype=float)           # (n, n_features)
     y = np.array(log_prices, dtype=float)
     w = np.array(ws, dtype=float)
 
-    X_aug = np.hstack([np.ones((len(X_rows), 1)), X])   # prepend intercept column
-    XTWX = X_aug.T @ (w[:, None] * X_aug)
-    XTWy = X_aug.T @ (w * y)
+    def _solve(used: list[str]):
+        """Weighted (ridge) OLS over the given feature set. Returns
+        (intercept, coef, r2, residual_std, ridge_lambda)."""
+        n_features = len(used)
+        # Design matrix: z-score each feature; impute missing with cohort mean (→ z=0)
+        X_rows = [[
+            ((f[fname] if f[fname] is not None else means[fname]) - means[fname]) / stds[fname]
+            for fname in used
+        ] for f in feats]
+        X = np.array(X_rows, dtype=float).reshape(len(feats), n_features)
 
-    ridge_lambda = 0.0
-    if n_eff < _N_EFF_OLS:
-        ridge_lambda = 0.5 * float(np.trace(XTWX)) / max(n_features, 1)
-        reg = ridge_lambda * np.eye(n_features + 1)
-        reg[0, 0] = 0.0   # don't penalise intercept
-        XTWX = XTWX + reg
+        X_aug = np.hstack([np.ones((len(feats), 1)), X])   # prepend intercept column
+        XTWX = X_aug.T @ (w[:, None] * X_aug)
+        XTWy = X_aug.T @ (w * y)
 
-    try:
-        beta = np.linalg.solve(XTWX, XTWy)
-    except np.linalg.LinAlgError:
-        beta, _, _, _ = np.linalg.lstsq(X_aug, y, rcond=None)
+        rl = 0.0
+        if n_eff < _N_EFF_OLS:
+            rl = 0.5 * float(np.trace(XTWX)) / max(n_features, 1)
+            reg = rl * np.eye(n_features + 1)
+            reg[0, 0] = 0.0   # don't penalise intercept
+            XTWX = XTWX + reg
 
-    intercept_val = float(beta[0])
-    coef = {fname: float(beta[i + 1]) for i, fname in enumerate(feature_used)}
+        try:
+            beta = np.linalg.solve(XTWX, XTWy)
+        except np.linalg.LinAlgError:
+            beta, _, _, _ = np.linalg.lstsq(X_aug, y, rcond=None)
 
-    y_hat = X_aug @ beta
-    residuals = y - y_hat
-    ss_res = float(np.dot(w, residuals ** 2))
-    y_wm = float(np.dot(w, y) / total_w)
-    ss_tot = float(np.dot(w, (y - y_wm) ** 2))
-    r2 = max(0.0, 1.0 - ss_res / ss_tot) if ss_tot > 1e-10 else 0.0
-    # Degrees of freedom: n_eff - n_features - 1 (intercept)
-    dof = max(n_eff - n_features - 1, 1.0)
-    residual_std = math.sqrt(ss_res / dof)
+        intercept = float(beta[0])
+        cf = {fname: float(beta[i + 1]) for i, fname in enumerate(used)}
+
+        residuals = y - X_aug @ beta
+        ss_res = float(np.dot(w, residuals ** 2))
+        y_wm = float(np.dot(w, y) / total_w)
+        ss_tot = float(np.dot(w, (y - y_wm) ** 2))
+        r2_ = max(0.0, 1.0 - ss_res / ss_tot) if ss_tot > 1e-10 else 0.0
+        dof = max(n_eff - n_features - 1, 1.0)   # n_eff - n_features - intercept
+        return intercept, cf, r2_, math.sqrt(ss_res / dof), rl
+
+    intercept_val, coef, r2, residual_std, ridge_lambda = _solve(feature_used)
+
+    # Non-negativity guard: a garden (and any other monotone-up feature) must
+    # not lower the estimate. If collinearity hands such a feature a negative
+    # coefficient, drop it and refit so its effect is neutral, never a penalty.
+    drop = [f for f in _NON_NEGATIVE_FEATURES if coef.get(f, 0.0) < 0]
+    if drop:
+        feature_used = [f for f in feature_used if f not in drop]
+        intercept_val, coef, r2, residual_std, ridge_lambda = _solve(feature_used)
 
     return FittedModel(
         coef=coef, intercept=intercept_val,

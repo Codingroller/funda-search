@@ -18,6 +18,7 @@ from app.bid_model import (
 _FEATURE_LABELS: dict[str, str] = {
     "log_area":     "Living area",
     "log_plot":     "Plot / garden area",
+    "has_plot":     "Garden premium",
     "energy_rank":  "Energy label",
     "year_built":   "Construction year",
     "is_apartment": "Property type",
@@ -37,6 +38,9 @@ def _feature_note(fname: str, raw_val: float | None, mean: float, delta_pct: flo
         return f"{sign}{delta_pct:.1f}% — living area relative to comparable average"
     if fname == "log_plot":
         return f"{sign}{delta_pct:.1f}% — plot size relative to comparable average"
+    if fname == "has_plot":
+        desc = "has a garden / plot" if raw_val and raw_val > 0.5 else "no garden / plot"
+        return f"{sign}{delta_pct:.1f}% — {desc}"
     return f"{sign}{delta_pct:.1f}% — vs. comparable average"
 
 
