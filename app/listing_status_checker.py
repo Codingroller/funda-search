@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 from sqlalchemy import select
@@ -12,6 +13,52 @@ except ImportError:
     ListingNotFound = LookupError  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
+
+# Human-readable phrasing for push notifications when a status changes.
+_STATUS_LABELS = {
+    "active": "available",
+    "sold": "sold",
+    "under_reservation": "sold under reservation",
+    "negotiations": "under negotiation",
+    "rented": "rented",
+    "withdrawn": "withdrawn",
+    "removed": "removed from Funda",
+}
+
+
+async def _notify_status_change(
+    user_id: int, global_id: str, old_status: str, new_status: str, payload_json: str | None
+) -> None:
+    """Push a mobile notification to the user who liked this listing."""
+    from app.notifier import notify_user
+
+    try:
+        payload = json.loads(payload_json) if payload_json else {}
+    except (ValueError, TypeError):
+        payload = {}
+
+    title = payload.get("title") or "Liked listing"
+    city = payload.get("city")
+    if city:
+        title = f"{title} · {city}"
+
+    old_label = _STATUS_LABELS.get(old_status, old_status)
+    new_label = _STATUS_LABELS.get(new_status, new_status)
+
+    try:
+        await notify_user(
+            user_id,
+            title=title,
+            body=f"Status changed: now {new_label} (was {old_label})",
+            url=f"/listings/{global_id}",
+            image=payload.get("photo_url"),
+            tag=f"status-{global_id}",
+            count=1,
+        )
+    except Exception:
+        logger.warning(
+            "status-change push failed for %s (user %s)", global_id, user_id, exc_info=True
+        )
 
 
 def _normalize_status(detail: dict) -> str:
@@ -59,6 +106,7 @@ async def check_liked_listing_statuses() -> None:
             await asyncio.sleep(2)
             continue
 
+        pending_notifications: list[tuple[int, str, str | None]] = []
         try:
             async with AsyncSessionLocal() as db:
                 result = await db.execute(
@@ -70,9 +118,15 @@ async def check_liked_listing_statuses() -> None:
                         row.listing_status = new_status
                         changed += 1
                         logger.info("status changed %s: %s → %s", global_id, old, new_status)
+                        pending_notifications.append((row.user_id, old, row.payload_json))
                 await db.commit()
         except Exception:
             logger.exception("db update failed for %s", global_id)
+            pending_notifications = []   # commit failed — don't notify on un-persisted changes
+
+        # Notify each user who liked this listing (only after a successful commit)
+        for user_id, old, payload_json in pending_notifications:
+            await _notify_status_change(user_id, global_id, old, new_status, payload_json)
 
         await asyncio.sleep(2)
 
