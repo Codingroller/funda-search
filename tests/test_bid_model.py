@@ -274,6 +274,71 @@ class TestNullFeatureHandling:
 
 # ── TestBandWidthReflectsDispersion ──────────────────────────────────────
 
+class TestSmearing:
+    """Retransformation correction: a log-OLS fit predicts the geometric mean,
+    which sits below the arithmetic mean and made every estimate read low."""
+
+    def test_smearing_is_one_for_homogeneous_cohort(self):
+        m = fit(_cohort(15, price=500_000), [1.0] * 15)
+        assert m.smearing == pytest.approx(1.0, abs=1e-9)
+
+    def test_smearing_at_least_one_for_dispersed_cohort(self):
+        rows = [_row(price=400_000 + i * 20_000) for i in range(15)]
+        m = fit(rows, [1.0] * len(rows))
+        assert m.smearing > 1.0
+
+    def test_smearing_recovers_arithmetic_mean(self):
+        # Price-only dispersion (all other features constant → intercept-only fit).
+        # Duan smearing makes exp(intercept)*smearing == arithmetic mean of prices.
+        prices = [400_000 + i * 20_000 for i in range(15)]
+        rows = [_row(price=p) for p in prices]
+        m = fit(rows, [1.0] * len(rows))
+        _, rec, _ = predict(m, _row())
+        assert rec == pytest.approx(sum(prices) / len(prices), rel=0.01)
+
+    def test_smearing_lifts_above_geometric_mean(self):
+        prices = [400_000 + i * 20_000 for i in range(15)]
+        rows = [_row(price=p) for p in prices]
+        m = fit(rows, [1.0] * len(rows))
+        _, rec, _ = predict(m, _row())
+        geo_mean = math.exp(sum(math.log(p) for p in prices) / len(prices))
+        assert rec > geo_mean
+
+    def test_smearing_capped(self):
+        m = fit(_cohort(15, price=500_000), [1.0] * 15)
+        assert m.smearing <= 1.20
+
+
+class TestOverbidUplift:
+    """Competitive over-asking uplift turns fitted fair value into a winning bid."""
+
+    def test_overbid_scales_recommended(self):
+        m = fit(_cohort(15), [1.0] * 15)
+        _, rec_base, _ = predict(m, _row(), overbid=0.0)
+        _, rec_up, _ = predict(m, _row(), overbid=0.05)
+        assert rec_up == pytest.approx(rec_base * 1.05, rel=0.005)
+
+    def test_overbid_default_is_neutral(self):
+        m = fit(_cohort(15), [1.0] * 15)
+        assert predict(m, _row()) == predict(m, _row(), overbid=0.0)
+
+    def test_overbid_preserves_ordering(self):
+        m = fit(_cohort(15), [1.0] * 15)
+        lo, rec, hi = predict(m, _row(), overbid=0.05)
+        assert lo < rec < hi
+
+    def test_overbid_applies_in_fallback_path(self):
+        m = fit(_cohort(3), [1.0] * 3)   # sparse → median-ppm fallback
+        assert m.fallback is True
+        _, rec_base, _ = predict(m, _row(area=80), overbid=0.0)
+        _, rec_up, _ = predict(m, _row(area=80), overbid=0.05)
+        assert rec_up == pytest.approx(rec_base * 1.05, rel=0.01)
+
+    def test_negative_overbid_clamped_to_zero(self):
+        m = fit(_cohort(15), [1.0] * 15)
+        assert predict(m, _row(), overbid=-0.2) == predict(m, _row(), overbid=0.0)
+
+
 class TestBandWidthReflectsDispersion:
     def test_uniform_cohort_has_tighter_band(self):
         # Identical prices → residual_std ≈ 0 → band hits floor

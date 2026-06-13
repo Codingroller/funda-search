@@ -44,17 +44,34 @@ def _feature_note(fname: str, raw_val: float | None, mean: float, delta_pct: flo
     return f"{sign}{delta_pct:.1f}% — vs. comparable average"
 
 
+def _overbid_item(overbid: float) -> dict | None:
+    """The competitive over-asking uplift, shown as its own rationale line."""
+    if not overbid or overbid <= 0:
+        return None
+    pct = overbid * 100
+    return {
+        "label": "Competitive bid uplift",
+        "delta_pct": round(pct, 1),
+        "note": (
+            f"+{pct:.1f}% over fitted fair value — comparables reflect asking prices, "
+            f"but Dutch homes typically sell above asking, so the bid is sized to win"
+        ),
+    }
+
+
 def build_explanation(
     model: FittedModel,
     subject: dict,
     cohort: "CompCohort",  # noqa: F821
     recommended: int,
+    overbid: float = 0.0,
 ) -> list[dict]:
     """Return [{label, delta_pct, note}] for the rationale modal."""
     items: list[dict] = []
     n_active = len(getattr(cohort, "active", []))
     n_sold = len(getattr(cohort, "sold", []))
     total_n = n_active + n_sold
+    overbid_item = _overbid_item(overbid)
 
     if model.fallback:
         ppm_note = f" at {_fmt_eur(int(model.median_ppm))}/m²" if model.median_ppm else ""
@@ -66,6 +83,8 @@ def build_explanation(
                 f"({total_n} listing{'s' if total_n != 1 else ''} found — sparse cohort)"
             ),
         })
+        if overbid_item:
+            items.append(overbid_item)
         _add_context(items, model, cohort, total_n)
         return items
 
@@ -95,6 +114,9 @@ def build_explanation(
 
     # Largest effects first
     items.sort(key=lambda x: abs(x["delta_pct"]), reverse=True)
+
+    if overbid_item:
+        items.append(overbid_item)
 
     _add_context(items, model, cohort, total_n)
     return items

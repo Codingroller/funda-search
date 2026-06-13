@@ -17,5 +17,10 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:r.schoonen@rominiek.nl"
 
+    # Competitive-bid uplift: the model fits comparable *asking* prices, but Dutch
+    # homes typically sell above asking, so a winning bid sits over the fitted fair
+    # value. This is the fraction added on top (0.05 = +5%). Tune per market/period.
+    bid_overbid_pct: float = 0.05
+
 
 settings = Settings()

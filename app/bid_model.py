@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-CURRENT_MODEL_VERSION = "v2.0"
+CURRENT_MODEL_VERSION = "v2.1"
 
 _ENERGY_ORDER = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]
 # has_plot is collinear with log_plot (+50 floor) and is_apartment, so the
@@ -28,6 +28,7 @@ _BAND_Z_NORMAL = 1.28  # 80% prediction interval
 _BAND_Z_LOW = 1.65     # 90% prediction interval for small N
 _BAND_MIN = 0.03
 _BAND_MAX = 0.15
+_SMEARING_MAX = 1.20   # cap the retransformation factor against heavy-tailed cohorts
 
 
 def _energy_rank(label: str | None) -> int:
@@ -91,6 +92,7 @@ class FittedModel:
     ridge_lambda: float              # 0.0 = pure OLS
     fallback: bool                   # True → median-ppm path (sparse cohort)
     median_ppm: float | None         # always computed; used in fallback + display
+    smearing: float = 1.0            # Duan retransformation factor (log-fit → mean, not median)
 
 
 def fit(rows: list[dict], weights: list[float]) -> FittedModel:
@@ -141,7 +143,7 @@ def fit(rows: list[dict], weights: list[float]) -> FittedModel:
 
     def _solve(used: list[str]):
         """Weighted (ridge) OLS over the given feature set. Returns
-        (intercept, coef, r2, residual_std, ridge_lambda)."""
+        (intercept, coef, r2, residual_std, ridge_lambda, smearing)."""
         n_features = len(used)
         # Design matrix: z-score each feature; impute missing with cohort mean (→ z=0)
         X_rows = [[
@@ -175,9 +177,17 @@ def fit(rows: list[dict], weights: list[float]) -> FittedModel:
         ss_tot = float(np.dot(w, (y - y_wm) ** 2))
         r2_ = max(0.0, 1.0 - ss_res / ss_tot) if ss_tot > 1e-10 else 0.0
         dof = max(n_eff - n_features - 1, 1.0)   # n_eff - n_features - intercept
-        return intercept, cf, r2_, math.sqrt(ss_res / dof), rl
 
-    intercept_val, coef, r2, residual_std, ridge_lambda = _solve(feature_used)
+        # Duan's smearing estimator: a log-OLS fit predicts the conditional
+        # *median* (geometric mean), which is systematically below the mean and
+        # made every estimate read low. The weighted mean of exp(residual) — ≥ 1
+        # by Jensen since the weighted residuals sum to zero — rescales the
+        # back-transformed prediction to target the conditional mean instead.
+        smearing = float(np.dot(w, np.exp(residuals)) / total_w)
+        smearing = min(max(smearing, 1.0), _SMEARING_MAX)
+        return intercept, cf, r2_, math.sqrt(ss_res / dof), rl, smearing
+
+    intercept_val, coef, r2, residual_std, ridge_lambda, smearing = _solve(feature_used)
 
     # Non-negativity guard: a garden (and any other monotone-up feature) must
     # not lower the estimate. If collinearity hands such a feature a negative
@@ -185,27 +195,34 @@ def fit(rows: list[dict], weights: list[float]) -> FittedModel:
     drop = [f for f in _NON_NEGATIVE_FEATURES if coef.get(f, 0.0) < 0]
     if drop:
         feature_used = [f for f in feature_used if f not in drop]
-        intercept_val, coef, r2, residual_std, ridge_lambda = _solve(feature_used)
+        intercept_val, coef, r2, residual_std, ridge_lambda, smearing = _solve(feature_used)
 
     return FittedModel(
         coef=coef, intercept=intercept_val,
         feature_means=means, feature_stds=stds,
         feature_used=feature_used, n_eff=n_eff, r2=r2,
         residual_std=residual_std, ridge_lambda=ridge_lambda,
-        fallback=False, median_ppm=median_ppm,
+        fallback=False, median_ppm=median_ppm, smearing=smearing,
     )
 
 
-def predict(model: FittedModel, subject: dict) -> tuple[int, int, int]:
-    """Return (low_eur, recommended_eur, high_eur). Returns (0,0,0) on failure."""
+def predict(model: FittedModel, subject: dict, overbid: float = 0.0) -> tuple[int, int, int]:
+    """Return (low_eur, recommended_eur, high_eur). Returns (0,0,0) on failure.
+
+    `overbid` is the competitive over-asking uplift (e.g. 0.05 = +5%): the fit
+    targets comparable *asking*-price value, but a winning Dutch bid sits above
+    asking, so the final recommendation is scaled by (1 + overbid).
+    """
     area = subject.get("living_area")
     if not area:
         return 0, 0, 0
 
+    uplift = 1.0 + max(0.0, overbid)
+
     if model.fallback:
         if not model.median_ppm:
             return 0, 0, 0
-        recommended = round(model.median_ppm * area / 100) * 100
+        recommended = round(model.median_ppm * area * uplift / 100) * 100
         low = round(recommended * (1 - _BAND_MAX) / 100) * 100
         high = round(recommended * (1 + _BAND_MAX) / 100) * 100
         return int(low), int(recommended), int(high)
@@ -220,7 +237,9 @@ def predict(model: FittedModel, subject: dict) -> tuple[int, int, int]:
         z = (val - model.feature_means[fname]) / std if std > 1e-8 else 0.0
         log_price += model.coef[fname] * z
 
-    recommended = round(math.exp(log_price) / 100) * 100
+    # Smearing lifts the geometric-mean fit to the conditional mean; uplift then
+    # turns that fair value into a competitive winning bid.
+    recommended = round(math.exp(log_price) * model.smearing * uplift / 100) * 100
     if recommended <= 0:
         return 0, 0, 0
 

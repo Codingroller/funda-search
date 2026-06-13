@@ -21,6 +21,7 @@ from app.bid_model import (
     fit,
     predict,
 )
+from app.config import settings
 from app.db import AsyncSessionLocal
 from app.funda_client import get_listing_detail
 from app.models import BidEstimate
@@ -154,7 +155,8 @@ async def compute_bid_estimate(global_id: str) -> None:
         weights = _weights_for_cohort(cohort)
 
         model: FittedModel = fit(all_rows, weights)
-        low, recommended, high = predict(model, subject)
+        overbid = settings.bid_overbid_pct
+        low, recommended, high = predict(model, subject, overbid=overbid)
 
         if recommended == 0:
             # No usable comparables and no median_ppm — fall back to asking price
@@ -170,7 +172,7 @@ async def compute_bid_estimate(global_id: str) -> None:
             adjustments = [{"label": "No comparables found", "delta_pct": 0,
                             "note": "Estimate based on asking price ±5% — no comparable listings found"}]
         else:
-            adjustments = build_explanation(model, subject, cohort, recommended)
+            adjustments = build_explanation(model, subject, cohort, recommended, overbid=overbid)
 
         confidence = confidence_level(model)
 
