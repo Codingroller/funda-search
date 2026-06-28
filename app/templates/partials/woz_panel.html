@@ -1,0 +1,32 @@
+<div class="detail-section">
+  <h2 class="detail-section-title">WOZ value</h2>
+  {% if woz and woz.latest_woz_eur %}
+  <div class="bid-card">
+    <div class="bid-card-main">
+      <div class="bid-card-label">Assessed value{% if woz.latest_peildatum %} · peildatum {{ woz.latest_peildatum }}{% endif %}</div>
+      <div class="bid-card-amount">€ {{ woz.latest_woz_eur | format_price }}</div>
+    </div>
+    {% if woz.history and woz.history | length > 1 %}
+    <details class="funda-details">
+      <summary class="funda-details-summary">
+        <span class="funda-details-title">History · {{ woz.history | length }} years</span>
+        <span class="funda-details-chevron">▸</span>
+      </summary>
+      <div class="nb-sparse-body">
+        {% for h in woz.history %}
+        {% if h.woz_eur %}
+        <div class="nb-sparse-row">
+          <span class="nb-sparse-label">{{ h.peildatum[:10] }}</span>
+          <span class="nb-sparse-val">€ {{ h.woz_eur | format_price }}</span>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+    <p class="text-muted small bid-card-meta">Source: WOZ-waardeloket — municipal assessed value (not a market price)</p>
+  </div>
+  {% else %}
+  <p class="text-muted">WOZ value unavailable for this address.</p>
+  {% endif %}
+</div>

@@ -46,9 +46,9 @@
   <h2 class="detail-section-title">Bid estimate</h2>
   <p class="text-muted">Bid guidance not available for this listing (auction or already sold).</p>
 </div>
-{% elif is_liked %}
+{% elif is_liked or auto_poll %}
 <div id="bid-estimate-section" class="detail-section"
-     hx-get="/listings/{{ listing.global_id }}/bid-estimate/card"
+     hx-get="/listings/{{ listing.global_id }}/bid-estimate/card{% if auto_poll and not is_liked %}?auto_poll=true{% endif %}"
      hx-trigger="load delay:4s, every 6s"
      hx-swap="outerHTML">
   <h2 class="detail-section-title">Bid estimate</h2>

@@ -37,6 +37,7 @@
       {% set path = request.url.path %}
       <a href="/" class="topbar-nav-link {% if path == '/' %}is-active{% endif %}">Dashboard</a>
       <a href="/liked" class="topbar-nav-link {% if path.startswith('/liked') %}is-active{% endif %}">Liked</a>
+      <a href="/house-info" class="topbar-nav-link {% if path.startswith('/house-info') %}is-active{% endif %}">House info</a>
       <a href="/settings" class="topbar-nav-link {% if path.startswith('/settings') %}is-active{% endif %}">Settings</a>
       {% if current_user is defined and current_user and current_user.is_admin %}
       <a href="/admin" class="topbar-nav-link {% if path.startswith('/admin') %}is-active{% endif %}">Admin</a>
@@ -230,6 +231,13 @@
         <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
       </svg>
       <span class="bottom-nav-label">Liked</span>
+    </a>
+    <a href="/house-info" class="bottom-nav-link {% if path.startswith('/house-info') %}is-active{% endif %}">
+      <svg class="bottom-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <span class="bottom-nav-label">House info</span>
     </a>
     <a href="/settings" class="bottom-nav-link {% if path.startswith('/settings') %}is-active{% endif %}">
       <svg class="bottom-nav-icon" viewBox="0 0 24 24" aria-hidden="true">

@@ -1,0 +1,243 @@
+{# ── Neighbourhood statistics ── #}
+{% if view %}
+{% from "partials/nb_macros.html" import nb_col_header, nb_row, nb_bar %}
+<div class="detail-section">
+  <h2 class="detail-section-title">
+    Neighbourhood
+    <span class="nb-names text-muted"> · {{ view.buurt_name }} · {{ view.wijk_name }}</span>
+  </h2>
+
+  {# At-a-glance strip #}
+  {% if view.glance %}
+  <div class="nb-glance">
+    {% for kpi in view.glance %}
+    <div class="nb-glance-kpi">
+      <div class="nb-glance-val">{{ kpi.value }}</div>
+      <div class="nb-glance-label">{{ kpi.label }}</div>
+      {% if kpi.sub %}<div class="nb-glance-sub">{{ kpi.sub }}</div>{% endif %}
+      {% if kpi.delta %}<div class="nb-glance-delta {{ 'nb-d-pos' if kpi.delta.startswith('+') else 'nb-d-neg' }}">{{ kpi.delta }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# Sticky theme chips #}
+  <nav class="nb-chips">
+    <a class="nb-chip" href="#nb-pop">Population</a>
+    <a class="nb-chip" href="#nb-hh">Households</a>
+    <a class="nb-chip" href="#nb-wonen">Housing</a>
+    <a class="nb-chip" href="#nb-biz">Businesses</a>
+    <a class="nb-chip" href="#nb-mob">Mobility</a>
+    <a class="nb-chip" href="#nb-prox">Proximity</a>
+    <a class="nb-chip" href="#nb-area">Area</a>
+    {% if crime_view %}<a class="nb-chip" href="#nb-safety">Safety</a>{% endif %}
+    {% if view.sparse.has_any %}<a class="nb-chip" href="#nb-more">More ▸</a>{% endif %}
+  </nav>
+
+  {# Population #}
+  <section id="nb-pop" class="nb-section">
+    <h3 class="nb-section-title">Population</h3>
+    {{ nb_col_header(view.buurt_name, view.wijk_name) }}
+    {{ nb_row("Residents", view.population.residents_b, view.population.residents_w, view.population.residents_d) }}
+    {% if view.population.births_b is not none or view.population.births_w is not none %}
+    {{ nb_row("Births", view.population.births_b, view.population.births_w) }}
+    {{ nb_row("Deaths", view.population.deaths_b, view.population.deaths_w) }}
+    {% endif %}
+    {{ nb_bar("Age distribution", view.population.age_segs) }}
+    {{ nb_bar("Marital status", view.population.mar_segs) }}
+    {{ nb_bar("Heritage", view.population.her_segs) }}
+  </section>
+
+  {# Households #}
+  <section id="nb-hh" class="nb-section">
+    <h3 class="nb-section-title">Households</h3>
+    {{ nb_col_header(view.buurt_name, view.wijk_name) }}
+    {{ nb_row("Total", view.households.total_b, view.households.total_w, view.households.total_d) }}
+    {{ nb_row("Single-person", (view.households.single_pct_b ~ "%") if view.households.single_pct_b is not none else none, (view.households.single_pct_w ~ "%") if view.households.single_pct_w is not none else none) }}
+    {{ nb_row("With children", (view.households.children_pct_b ~ "%") if view.households.children_pct_b is not none else none, (view.households.children_pct_w ~ "%") if view.households.children_pct_w is not none else none) }}
+    {{ nb_row("Avg. size", view.households.avg_size_b, view.households.avg_size_w) }}
+    {{ nb_row("Pop. density", (view.households.density_b ~ " /km²") if view.households.density_b else none, (view.households.density_w ~ " /km²") if view.households.density_w else none) }}
+  </section>
+
+  {# Housing #}
+  <section id="nb-wonen" class="nb-section">
+    <h3 class="nb-section-title">Housing</h3>
+    {{ nb_col_header(view.buurt_name, view.wijk_name) }}
+    {{ nb_row("Avg. WOZ value", view.housing.woz_b, view.housing.woz_w, view.housing.woz_d) }}
+    {{ nb_row("Total homes", view.housing.stock_b, view.housing.stock_w) }}
+    {{ nb_row("Vacant", (view.housing.vacant_b ~ "%") if view.housing.vacant_b is not none else none, (view.housing.vacant_w ~ "%") if view.housing.vacant_w is not none else none) }}
+    {{ nb_row("Built > 10 yr ago", (view.housing.built_old_b ~ "%") if view.housing.built_old_b is not none else none, (view.housing.built_old_w ~ "%") if view.housing.built_old_w is not none else none) }}
+    {% if view.housing.gas_free_b is not none %}{{ nb_row("Gas-free", (view.housing.gas_free_b ~ "%"), (view.housing.gas_free_w ~ "%") if view.housing.gas_free_w is not none else none) }}{% endif %}
+    {{ nb_bar("Tenure", view.housing.tenure_segs) }}
+    {{ nb_bar("Housing type", view.housing.type_segs) }}
+  </section>
+
+  {# Businesses #}
+  <section id="nb-biz" class="nb-section">
+    <h3 class="nb-section-title">Businesses</h3>
+    {{ nb_col_header(view.buurt_name, view.wijk_name) }}
+    {{ nb_row("Total", view.businesses.total_b, view.businesses.total_w, view.businesses.total_d) }}
+    {{ nb_bar("By sector", view.businesses.segs) }}
+  </section>
+
+  {# Mobility #}
+  <section id="nb-mob" class="nb-section">
+    <h3 class="nb-section-title">Mobility</h3>
+    {{ nb_col_header(view.buurt_name, view.wijk_name) }}
+    {{ nb_row("Cars / household", view.mobility.cars_hh_b, view.mobility.cars_hh_w, view.mobility.cars_hh_d) }}
+    {{ nb_row("Cars total", view.mobility.cars_total_b, view.mobility.cars_total_w) }}
+    {{ nb_row("Motorcycles", view.mobility.motorcycles_b, view.mobility.motorcycles_w) }}
+    {{ nb_bar("Fuel type", view.mobility.fuel_segs) }}
+  </section>
+
+  {# Proximity #}
+  <section id="nb-prox" class="nb-section">
+    <h3 class="nb-section-title">Proximity (buurt)</h3>
+    <div class="nb-badges">
+      {% for badge in view.proximity.badges %}
+      {% if badge.km is not none %}
+      <span class="nb-walk-badge {{ badge.css }}">{{ badge.label }}<span class="nb-walk-dist">{{ badge.km }} km</span></span>
+      {% endif %}
+      {% endfor %}
+      {% if view.proximity.schools_3km is not none %}
+      <span class="nb-walk-badge nb-badge-grey">{{ view.proximity.schools_3km | int }} schools ≤ 3 km</span>
+      {% endif %}
+    </div>
+  </section>
+
+  {# Area #}
+  <section id="nb-area" class="nb-section">
+    <h3 class="nb-section-title">Area</h3>
+    {{ nb_col_header(view.buurt_name, view.wijk_name) }}
+    {% if view.area.land_ha is not none %}
+    {{ nb_row("Land", (view.area.land_ha | int ~ " ha"), none) }}
+    {{ nb_row("Water", (view.area.water_ha | int ~ " ha"), none) }}
+    {% endif %}
+    {% if view.area.urb_dots_b %}
+    <div class="nb-row">
+      <span class="nb-label">Urbanisation</span>
+      <span class="nb-val nb-dots">{{ view.area.urb_dots_b }}</span>
+      <span class="nb-val nb-dots">{{ view.area.urb_dots_w }}</span>
+      <span></span>
+    </div>
+    <div class="nb-row nb-row-sub">
+      <span></span>
+      <span class="nb-val-sub">{{ view.area.urb_label_b }}</span>
+      <span class="nb-val-sub">{{ view.area.urb_label_w }}</span>
+      <span></span>
+    </div>
+    {% endif %}
+    {{ nb_row("Addr. density", (view.area.addr_den_b ~ " /km²") if view.area.addr_den_b else none, (view.area.addr_den_w ~ " /km²") if view.area.addr_den_w else none) }}
+  </section>
+
+  {# Safety #}
+  {% if crime_view %}
+  <section id="nb-safety" class="nb-section">
+    <h3 class="nb-section-title">Safety · {{ crime_view.gemeentenaam }}</h3>
+    <p class="text-muted small" style="margin-bottom:10px">Municipality-level data (finest granularity CBS publishes for crime).</p>
+
+    {# Glance strip #}
+    <div class="nb-glance">
+      {% if crime_view.score %}
+      <div class="nb-glance-kpi">
+        <div class="nb-glance-val">{{ crime_view.score }}/10</div>
+        <div class="nb-glance-label">Safety score</div>
+        <div class="nb-glance-sub">{{ crime_view.score_label }}{% if crime_view.safety_year %} · {{ crime_view.safety_year }}{% endif %}</div>
+      </div>
+      {% endif %}
+      {% if crime_view.total_per_1k %}
+      <div class="nb-glance-kpi">
+        <div class="nb-glance-val">{{ crime_view.total_per_1k }}</div>
+        <div class="nb-glance-label">Crimes / 1k residents</div>
+        <div class="nb-glance-sub">{% if crime_view.crime_year %}{{ crime_view.crime_year }}{% endif %}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if crime_view.has_crime %}
+    <div class="nb-sparse-section-label">Registered crimes per 1,000 residents ({{ crime_view.crime_year }})</div>
+    {% if crime_view.theft_per_1k is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Theft &amp; burglary</span><span class="nb-sparse-val">{{ crime_view.theft_per_1k }}</span></div>{% endif %}
+    {% if crime_view.vandalism_per_1k is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Vandalism</span><span class="nb-sparse-val">{{ crime_view.vandalism_per_1k }}</span></div>{% endif %}
+    {% if crime_view.disorder_per_1k is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Public order</span><span class="nb-sparse-val">{{ crime_view.disorder_per_1k }}</span></div>{% endif %}
+    {% endif %}
+
+    {% if crime_view.has_safety %}
+    <div class="nb-sparse-section-label">Victimization survey ({{ crime_view.safety_year }})</div>
+    {% if crime_view.pct_feel_unsafe is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Feel unsafe in area</span><span class="nb-sparse-val">{{ crime_view.pct_feel_unsafe }}%</span></div>{% endif %}
+    {% if crime_view.pct_much_crime is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Perceive much crime</span><span class="nb-sparse-val">{{ crime_view.pct_much_crime }}%</span></div>{% endif %}
+    {% if crime_view.pct_burglary_victim is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Burglary victim</span><span class="nb-sparse-val">{{ crime_view.pct_burglary_victim }}%</span></div>{% endif %}
+    {% if crime_view.pct_property_victim is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Property crime victim</span><span class="nb-sparse-val">{{ crime_view.pct_property_victim }}%</span></div>{% endif %}
+    {% if crime_view.pct_vandalism_victim is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Vandalism victim</span><span class="nb-sparse-val">{{ crime_view.pct_vandalism_victim }}%</span></div>{% endif %}
+    {% if crime_view.pct_assault_victim is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Assault victim</span><span class="nb-sparse-val">{{ crime_view.pct_assault_victim }}%</span></div>{% endif %}
+    {% endif %}
+
+    <p class="text-muted small" style="margin-top:10px">
+      Sources: CBS Geregistreerde criminaliteit (83648NED){% if crime_view.has_safety %} · CBS Veiligheidsmonitor (85146NED){% endif %} · CC BY 4.0
+    </p>
+  </section>
+  {% endif %}
+
+  {# Sparse accordion #}
+  <details id="nb-more" class="nb-sparse">
+    <summary class="nb-sparse-summary">
+      Energy · Education · Labour · Income · Benefits · Care
+    </summary>
+    <div class="nb-sparse-body">
+    {% if view.sparse.has_any %}
+      {{ nb_col_header(view.buurt_name, view.wijk_name) }}
+      {% set s = view.sparse %}
+      {% if s.energy.has %}
+      <div class="nb-sparse-section-label">Energy</div>
+      {% if s.energy.elec_b is not none %}
+      <div class="nb-sparse-row"><span class="nb-sparse-label">Avg. electricity</span><span class="nb-sparse-val">{{ s.energy.elec_b | int }} kWh</span><span class="nb-sparse-val">{{ s.energy.elec_w | int ~ ' kWh' if s.energy.elec_w is not none else '—' }}</span></div>
+      {% endif %}
+      {% if s.energy.gas_b is not none %}
+      <div class="nb-sparse-row"><span class="nb-sparse-label">Avg. gas use</span><span class="nb-sparse-val">{{ s.energy.gas_b | int }} m³</span><span class="nb-sparse-val">{{ s.energy.gas_w | int ~ ' m³' if s.energy.gas_w is not none else '—' }}</span></div>
+      {% endif %}
+      {% if s.energy.solar_b is not none %}
+      <div class="nb-sparse-row"><span class="nb-sparse-label">Solar panels</span><span class="nb-sparse-val">{{ s.energy.solar_b | int }}%</span><span class="nb-sparse-val"></span></div>
+      {% endif %}
+      {% endif %}
+      {% if s.education.has %}
+      <div class="nb-sparse-section-label">Education</div>
+      {% if s.education.pct_low_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Low attainment</span><span class="nb-sparse-val">{{ s.education.pct_low_b | int }}%</span><span class="nb-sparse-val">{{ s.education.pct_low_w | int ~ '%' if s.education.pct_low_w is not none else '—' }}</span></div>{% endif %}
+      {% if s.education.pct_mid_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Mid attainment</span><span class="nb-sparse-val">{{ s.education.pct_mid_b | int }}%</span><span class="nb-sparse-val">{{ s.education.pct_mid_w | int ~ '%' if s.education.pct_mid_w is not none else '—' }}</span></div>{% endif %}
+      {% if s.education.pct_high_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">High attainment</span><span class="nb-sparse-val">{{ s.education.pct_high_b | int }}%</span><span class="nb-sparse-val">{{ s.education.pct_high_w | int ~ '%' if s.education.pct_high_w is not none else '—' }}</span></div>{% endif %}
+      {% endif %}
+      {% if s.labour.has %}
+      <div class="nb-sparse-section-label">Labour</div>
+      {% if s.labour.participation_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Net participation</span><span class="nb-sparse-val">{{ s.labour.participation_b }}%</span><span class="nb-sparse-val">{{ s.labour.participation_w ~ '%' if s.labour.participation_w is not none else '—' }}</span></div>{% endif %}
+      {% if s.labour.pct_flex_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Flexible contract</span><span class="nb-sparse-val">{{ s.labour.pct_flex_b | int }}%</span><span class="nb-sparse-val">{{ s.labour.pct_flex_w | int ~ '%' if s.labour.pct_flex_w is not none else '—' }}</span></div>{% endif %}
+      {% if s.labour.pct_selfempl_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Self-employed</span><span class="nb-sparse-val">{{ s.labour.pct_selfempl_b | int }}%</span><span class="nb-sparse-val">{{ s.labour.pct_selfempl_w | int ~ '%' if s.labour.pct_selfempl_w is not none else '—' }}</span></div>{% endif %}
+      {% endif %}
+      {% if s.income.has %}
+      <div class="nb-sparse-section-label">Income</div>
+      {% if s.income.avg_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Avg. per resident</span><span class="nb-sparse-val">{{ s.income.avg_b }}</span><span class="nb-sparse-val">{{ s.income.avg_w or '—' }}</span></div>{% endif %}
+      {% if s.income.poverty_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">In poverty</span><span class="nb-sparse-val">{{ s.income.poverty_b }}%</span><span class="nb-sparse-val">{{ s.income.poverty_w ~ '%' if s.income.poverty_w is not none else '—' }}</span></div>{% endif %}
+      {% endif %}
+      {% if s.benefits.has %}
+      <div class="nb-sparse-section-label">Benefits</div>
+      {% if s.benefits.welfare_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Welfare</span><span class="nb-sparse-val">{{ s.benefits.welfare_b }}%</span><span class="nb-sparse-val">{{ s.benefits.welfare_w ~ '%' if s.benefits.welfare_w is not none else '—' }}</span></div>{% endif %}
+      {% if s.benefits.disability_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Disability</span><span class="nb-sparse-val">{{ s.benefits.disability_b }}%</span><span class="nb-sparse-val">{{ s.benefits.disability_w ~ '%' if s.benefits.disability_w is not none else '—' }}</span></div>{% endif %}
+      {% if s.benefits.unemployment_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Unemployment</span><span class="nb-sparse-val">{{ s.benefits.unemployment_b }}%</span><span class="nb-sparse-val">{{ s.benefits.unemployment_w ~ '%' if s.benefits.unemployment_w is not none else '—' }}</span></div>{% endif %}
+      {% endif %}
+      {% if s.care.has %}
+      <div class="nb-sparse-section-label">Care</div>
+      {% if s.care.youth_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Youth care</span><span class="nb-sparse-val">{{ s.care.youth_b }}%</span><span class="nb-sparse-val">{{ s.care.youth_w ~ '%' if s.care.youth_w is not none else '—' }}</span></div>{% endif %}
+      {% if s.care.wmo_b is not none %}<div class="nb-sparse-row"><span class="nb-sparse-label">Wmo clients</span><span class="nb-sparse-val">{{ s.care.wmo_b }}%</span><span class="nb-sparse-val">{{ s.care.wmo_w ~ '%' if s.care.wmo_w is not none else '—' }}</span></div>{% endif %}
+      {% endif %}
+    {% else %}
+      <p class="text-muted small">No data yet — CBS adds energy, education, labour, income, benefits and care quarterly throughout 2026.</p>
+    {% endif %}
+    </div>
+  </details>
+
+  <p class="text-muted small" style="margin-top:10px">
+    Source: CBS Kerncijfers wijken en buurten 2025 (86165NED) · CC BY 4.0 · Updated 2026-03-31
+  </p>
+</div>
+{% else %}
+<div class="detail-section">
+  <p class="text-muted">Neighbourhood statistics unavailable for this listing.</p>
+</div>
+{% endif %}

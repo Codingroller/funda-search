@@ -30,6 +30,7 @@ async def bid_estimate_card(
     request: Request,
     global_id: str,
     current_user: User = Depends(require_auth),
+    auto_poll: bool = False,
 ):
     estimate = await get_cached_estimate(global_id)
     try:
@@ -37,11 +38,12 @@ async def bid_estimate_card(
     except Exception:
         raise HTTPException(502)
     liked = await _is_liked(global_id, current_user.id)
-    if estimate is None and liked:
+    # auto_poll lets a non-liked context (e.g. the House info page) still compute.
+    if estimate is None and (liked or auto_poll):
         asyncio.create_task(compute_bid_estimate(global_id))
     return templates.TemplateResponse(
         request, "partials/bid_estimate_card.html",
-        {"listing": listing, "estimate": estimate, "is_liked": liked},
+        {"listing": listing, "estimate": estimate, "is_liked": liked, "auto_poll": auto_poll},
     )
 
 

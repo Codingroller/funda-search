@@ -1,0 +1,34 @@
+{% if listing %}
+<div id="house-info-funda" class="detail-section">
+  <h2 class="detail-section-title">For sale on Funda</h2>
+  {% if listing.photos %}
+  <a href="/listings/{{ listing.global_id }}" class="detail-hero" style="display:block">
+    <img src="{{ listing.photos[0] }}" alt="{{ listing.title }}" class="detail-hero-img">
+  </a>
+  {% endif %}
+  <div class="detail-meta-row">
+    <div class="detail-price-block">
+      <span class="detail-price">{{ listing.price or 'Price on request' }}</span>
+      {% if listing.price_per_m2 %}<span class="detail-ppm2">{{ listing.price_per_m2 }}</span>{% endif %}
+    </div>
+    <div class="detail-tags">
+      {% if listing.living_area %}<span class="detail-tag">{{ listing.living_area }} m²</span>{% endif %}
+      {% if listing.plot_area %}<span class="detail-tag">Plot {{ listing.plot_area }} m²</span>{% endif %}
+      {% if listing.rooms_count %}<span class="detail-tag">{{ listing.rooms_count }} rooms</span>{% endif %}
+      {% if listing.bedrooms %}<span class="detail-tag">{{ listing.bedrooms }} bedrooms</span>{% endif %}
+      {% if listing.energy_label %}<span class="energy-label label-{{ listing.energy_label | replace('+','p') }}" style="font-size:13px;padding:3px 8px">{{ listing.energy_label }}</span>{% endif %}
+      {% if listing.construction_year %}<span class="detail-tag">Built {{ listing.construction_year }}</span>{% endif %}
+      {% if listing.object_type %}<span class="detail-tag">{{ listing.object_type | capitalize }}</span>{% endif %}
+    </div>
+  </div>
+  <a href="/listings/{{ listing.global_id }}" class="btn btn-primary">View full listing →</a>
+</div>
+
+{# Bid estimate — reuses the standard card; polls until computed (auto_poll) #}
+{% include "partials/bid_estimate_card.html" %}
+{% else %}
+<div id="house-info-funda" class="detail-section">
+  <h2 class="detail-section-title">For sale?</h2>
+  <p class="text-muted">Not currently for sale on Funda.</p>
+</div>
+{% endif %}

@@ -6,7 +6,7 @@ All pyfunda and image-cache calls are mocked — no network I/O.
 """
 import json
 from datetime import timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.time_utils import now_utc
 
@@ -416,3 +416,160 @@ class TestGetListingDetail:
 
         mock_pyfunda.listing.assert_called_once()
         assert result["city"] == "Amsterdam"  # fresh data, not "OldData"
+
+
+# ---------------------------------------------------------------------------
+# find_funda_listing — best-effort address → live for-sale match
+# ---------------------------------------------------------------------------
+
+from app.funda_client import (  # noqa: E402
+    _detail_confirms,
+    _parse_house_number,
+    _search_match,
+    _sync_find_candidates,
+    find_funda_listing,
+)
+
+
+def _mk_result(global_id, postcode, title):
+    """Minimal search-result mock for matching (postcode + title)."""
+    m = MagicMock()
+    m.global_id = global_id
+    m.postcode = postcode
+    m.title = title
+    return m
+
+
+def _mk_funda(results_by_location):
+    """Mock Funda client whose iter_search returns per-location result lists."""
+    client = MagicMock()
+    client.__enter__ = MagicMock(return_value=client)
+    client.__exit__ = MagicMock(return_value=False)
+
+    def _iter_search(location=None, **kw):
+        return iter(results_by_location.get(location[0], []))
+
+    client.iter_search.side_effect = _iter_search
+    return client
+
+
+class TestParseHouseNumber:
+    def test_plain(self):
+        assert _parse_house_number("Prinsengracht 263") == (263, "")
+
+    def test_dash_suffix(self):
+        assert _parse_house_number("Prinsengracht 263-3") == (263, "3")
+
+    def test_letter_token_suffix(self):
+        assert _parse_house_number("Keizersgracht 123 H") == (123, "h")
+
+    def test_street_with_number_takes_last(self):
+        assert _parse_house_number("Plein 1940 12") == (12, "")
+
+    def test_no_number(self):
+        assert _parse_house_number("Somewhere") == (None, "")
+
+
+class TestSearchMatch:
+    def test_matches_postcode_and_number(self):
+        target = {"pc": "1016GV", "huisnummer": 263, "suffix": ""}
+        assert _search_match(_mk_result("A", "1016 GV", "Prinsengracht 263"), target)
+
+    def test_rejects_wrong_postcode(self):
+        target = {"pc": "1016GV", "huisnummer": 263, "suffix": ""}
+        assert not _search_match(_mk_result("A", "1017 AB", "Prinsengracht 263"), target)
+
+    def test_rejects_wrong_number(self):
+        target = {"pc": "1016GV", "huisnummer": 263, "suffix": ""}
+        assert not _search_match(_mk_result("A", "1016 GV", "Prinsengracht 99"), target)
+
+
+class TestDetailConfirms:
+    def test_confirms_exact(self):
+        target = {"pc": "1016GV", "huisnummer": 263, "suffix": ""}
+        detail = {"postcode": "1016 GV", "house_number": 263, "house_number_suffix": None}
+        assert _detail_confirms(detail, target)
+
+    def test_suffix_must_match(self):
+        target = {"pc": "1016GV", "huisnummer": 263, "suffix": "2"}
+        detail = {"postcode": "1016 GV", "house_number": 263, "house_number_suffix": "3"}
+        assert not _detail_confirms(detail, target)
+
+
+class TestSyncFindCandidates:
+    def test_finds_in_first_candidate(self):
+        target = {"pc": "1016GV", "huisnummer": 263, "suffix": ""}
+        client = _mk_funda({"1016 GV": [
+            _mk_result("A1", "1016 GV", "Prinsengracht 263"),
+            _mk_result("A2", "1016 GV", "Prinsengracht 999"),
+        ]})
+        with patch("app.funda_client.Funda", return_value=client):
+            assert _sync_find_candidates(["1016 GV", "Amsterdam"], target) == ["A1"]
+        # Should not have needed the city fallback
+        assert client.iter_search.call_count == 1
+
+    def test_falls_through_to_next_candidate(self):
+        target = {"pc": "1016GV", "huisnummer": 263, "suffix": ""}
+        client = _mk_funda({
+            "1016": [_mk_result("X", "9999 ZZ", "Other 1")],  # no match
+            "Amsterdam": [_mk_result("A1", "1016 GV", "Prinsengracht 263")],
+        })
+        with patch("app.funda_client.Funda", return_value=client):
+            assert _sync_find_candidates(["1016", "Amsterdam"], target) == ["A1"]
+        assert client.iter_search.call_count == 2
+
+    def test_respects_max_scan(self, monkeypatch):
+        monkeypatch.setattr("app.funda_client._MAX_SCAN", 2)
+        target = {"pc": "1016GV", "huisnummer": 263, "suffix": ""}
+        # Match sits at position 3 (beyond the cap) → not found
+        results = [
+            _mk_result("n1", "0000 AA", "x 1"),
+            _mk_result("n2", "0000 AA", "x 2"),
+            _mk_result("hit", "1016 GV", "Prinsengracht 263"),
+        ]
+        client = _mk_funda({"1016 GV": results})
+        with patch("app.funda_client.Funda", return_value=client):
+            assert _sync_find_candidates(["1016 GV"], target) == []
+
+    def test_location_error_is_skipped(self):
+        target = {"pc": "1016GV", "huisnummer": 263, "suffix": ""}
+        client = MagicMock()
+        client.__enter__ = MagicMock(return_value=client)
+        client.__exit__ = MagicMock(return_value=False)
+        client.iter_search.side_effect = [RuntimeError("bad location"),
+                                          iter([_mk_result("A1", "1016 GV", "Prinsengracht 263")])]
+        with patch("app.funda_client.Funda", return_value=client):
+            assert _sync_find_candidates(["1016 GV", "Amsterdam"], target) == ["A1"]
+
+
+class TestFindFundaListing:
+    async def test_happy_path(self):
+        detail = {"global_id": "A1", "postcode": "1016 GV",
+                  "house_number": 263, "house_number_suffix": None}
+        with patch("app.funda_client._sync_find_candidates", return_value=["A1"]), \
+             patch("app.funda_client.get_listing_detail",
+                   new=AsyncMock(return_value=detail)):
+            out = await find_funda_listing("1016 GV", 263, city="Amsterdam")
+        assert out["global_id"] == "A1"
+
+    async def test_confirmation_failure_returns_none(self):
+        detail = {"global_id": "A1", "postcode": "1099 ZZ",
+                  "house_number": 1, "house_number_suffix": None}
+        with patch("app.funda_client._sync_find_candidates", return_value=["A1"]), \
+             patch("app.funda_client.get_listing_detail",
+                   new=AsyncMock(return_value=detail)):
+            assert await find_funda_listing("1016 GV", 263, city="Amsterdam") is None
+
+    async def test_missing_postcode_returns_none(self):
+        assert await find_funda_listing("", 263, city="Amsterdam") is None
+
+    async def test_candidate_order_deduped(self):
+        captured = {}
+
+        def _capture(loc_candidates, target):
+            captured["locs"] = loc_candidates
+            return []
+
+        with patch("app.funda_client._sync_find_candidates", side_effect=_capture):
+            await find_funda_listing("1016 GV", 263, city="Amsterdam")
+        assert captured["locs"] == ["1016 GV", "1016", "Amsterdam"]

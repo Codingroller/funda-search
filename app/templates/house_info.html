@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}House info — Funda Search{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1>House info</h1>
+</div>
+
+<form class="form-card" onsubmit="goSearch(event)">
+  <div class="form-section">
+    <div class="field">
+      <label for="address-q">Look up any Dutch address</label>
+      <div class="autocomplete-wrap">
+        <input
+          type="text" id="address-q" name="q" required
+          placeholder="e.g. Prinsengracht 263, Amsterdam"
+          autocomplete="off"
+          hx-get="/house-info/autocomplete"
+          hx-trigger="keyup changed delay:300ms"
+          hx-target="#address-results"
+          hx-include="this"
+        >
+        <div id="address-results" class="autocomplete-dropdown"></div>
+      </div>
+      <p class="hint">WOZ value, neighbourhood &amp; safety stats — plus the Funda listing and a bid estimate if it's for sale.</p>
+    </div>
+  </div>
+  <div class="form-actions" style="margin-top:16px">
+    <button type="submit" class="btn btn-primary">Search →</button>
+  </div>
+</form>
+
+<script>
+  // Close the dropdown when clicking outside
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('.autocomplete-wrap')) {
+      var r = document.getElementById('address-results');
+      if (r) r.innerHTML = '';
+    }
+  });
+  // Pick a suggestion → go straight to its resolved result page
+  document.body.addEventListener('click', function (e) {
+    var item = e.target.closest('.autocomplete-item');
+    if (item && item.dataset.id) {
+      showSpinner('Getting house data…');
+      window.location = '/house-info/result?pdok_id=' + encodeURIComponent(item.dataset.id);
+    }
+  });
+  // Free-text fallback (Search button / Enter)
+  function goSearch(ev) {
+    ev.preventDefault();
+    var q = document.getElementById('address-q').value.trim();
+    if (!q) return;
+    showSpinner('Getting house data…');
+    window.location = '/house-info/result?q=' + encodeURIComponent(q);
+  }
+</script>
+{% endblock %}
