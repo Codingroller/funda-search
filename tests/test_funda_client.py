@@ -572,4 +572,4 @@ class TestFindFundaListing:
 
         with patch("app.funda_client._sync_find_candidates", side_effect=_capture):
             await find_funda_listing("1016 GV", 263, city="Amsterdam")
-        assert captured["locs"] == ["1016 GV", "1016", "Amsterdam"]
+        assert captured["locs"] == ["1016", "Amsterdam"]

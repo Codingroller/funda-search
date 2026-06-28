@@ -319,10 +319,13 @@ async def find_funda_listing(
     except (TypeError, ValueError):
         return None
 
-    # Most precise location first, de-duped, skipping blanks.
+    # Most precise location first, de-duped, skipping blanks. Funda rejects a
+    # full postcode ("1016 GV" → 0 results) but accepts the PC4 ("1016"), which
+    # is precise enough once we match on the full postcode + house number; the
+    # city is the broad fallback.
     seen: set[str] = set()
     loc_candidates: list[str] = []
-    for c in (postcode.strip(), target["pc"][:4], city):
+    for c in (target["pc"][:4], city):
         c = (c or "").strip()
         if c and c.lower() not in seen:
             seen.add(c.lower())
