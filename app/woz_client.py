@@ -26,7 +26,14 @@ from app.time_utils import as_utc, now_utc
 logger = logging.getLogger(__name__)
 
 _PDOK_URL = "https://api.pdok.nl/bzk/locatieserver/search/v3_1/free"
-_WOZ_URL  = "https://www.wozwaardeloket.nl/wozwaardeloket-api/v1/wozwaarde/nummeraanduiding/{}"
+# The WOZ-waardeloket front-end moved its API behind the Kadaster LV-WOZ gateway;
+# the old www.wozwaardeloket.nl path now serves the SPA shell (HTML, not JSON).
+# Source: https://www.wozwaardeloket.nl/assets/endpoints.json ("wozService").
+_WOZ_URL  = "https://api.kadaster.nl/lvwoz/wozwaardeloket-api/v1/wozwaarde/nummeraanduiding/{}"
+_WOZ_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (compatible; funda-search/1.0; +https://funda.rominiek.nl)",
+    "Accept": "application/json",
+}
 _TTL = timedelta(days=180)
 _NEGATIVE_TTL = timedelta(hours=24)   # cache failed lookups for 24 h
 
@@ -142,10 +149,11 @@ async def _fetch_woz(postcode: str, huisnummer: int, toevoeging: str | None) -> 
     if not nid:
         return None
 
-    # Step 2: fetch WOZ history from the public proxy
+    # Step 2: fetch WOZ history from the Kadaster LV-WOZ gateway. The BAG
+    # nummeraanduiding id is zero-padded to 16 chars (as the official front-end does).
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(_WOZ_URL.format(nid))
+            resp = await client.get(_WOZ_URL.format(str(nid).zfill(16)), headers=_WOZ_HEADERS)
             if resp.status_code == 403:
                 logger.warning("WOZ-waardeloket returned 403 — endpoint may be blocked")
                 return None
