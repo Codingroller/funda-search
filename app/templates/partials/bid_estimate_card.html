@@ -38,11 +38,7 @@
               onclick="document.getElementById('bid-rationale-modal').style.display='flex'"
               hx-get="/listings/{{ listing.global_id }}/bid-estimate/rationale"
               hx-target="#bid-rationale-modal-body"
-              hx-swap="innerHTML"
-              hx-disabled-elt="this">
-        <span class="btn-label">Why this price?</span>
-        <span class="btn-spinner" aria-hidden="true"><span class="spinner-ring-sm"></span></span>
-      </button>
+              hx-swap="innerHTML">Why this price?</button>
       <button class="btn btn-sm"
               hx-post="/listings/{{ listing.global_id }}/bid-estimate/recompute"
               hx-target="#bid-estimate-section"
