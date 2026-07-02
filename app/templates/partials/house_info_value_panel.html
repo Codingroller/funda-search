@@ -45,6 +45,14 @@
         <span class="btn-label">Why this value?</span>
         <span class="btn-spinner" aria-hidden="true"><span class="spinner-ring-sm"></span></span>
       </button>
+      <button class="btn btn-sm"
+              hx-post="/house-info/value-card/recompute?{{ qs }}"
+              hx-target="#house-info-value"
+              hx-swap="outerHTML"
+              hx-disabled-elt="this">
+        <span class="btn-label">Recalculate</span>
+        <span class="btn-spinner" aria-hidden="true"><span class="spinner-ring-sm"></span></span>
+      </button>
     </div>
     <p class="text-muted small bid-card-meta">
       Not currently for sale — estimated from {{ estimate.comparables_count }} comparable listing{% if estimate.comparables_count != 1 %}s{% endif %}

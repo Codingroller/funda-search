@@ -98,6 +98,25 @@ def _addr_key(nid: str, postcode: str, huisnummer: int | None, suffix: str) -> s
     )
 
 
+def _value_params(nid, postcode, huisnummer, suffix, street, city, woz_eur):
+    """Build the (address dict, query-string) pair the value-card endpoints share."""
+    address = {
+        "nummeraanduiding_id": nid or None,
+        "postcode": postcode or None,
+        "huisnummer": huisnummer,
+        "suffix": suffix or None,
+        "street": street or None,
+        "city": city or None,
+    }
+    qs = urlencode({
+        k: v for k, v in {
+            "nid": nid, "postcode": postcode, "huisnummer": huisnummer,
+            "suffix": suffix, "street": street, "city": city, "woz_eur": woz_eur,
+        }.items() if v not in (None, "")
+    })
+    return address, qs
+
+
 @router.get("/house-info", response_class=HTMLResponse)
 async def house_info_page(request: Request, current_user: User = Depends(require_auth)):
     recent = await _recent_searches(current_user.id)
@@ -235,24 +254,44 @@ async def house_info_value_card(
         return HTMLResponse("")
 
     addr_key = _addr_key(nid, postcode, huisnummer, suffix)
+    address, qs = _value_params(nid, postcode, huisnummer, suffix, street, city, woz_eur)
     estimate = await get_cached_value_estimate(addr_key)
     if estimate is None:
-        address = {
-            "nummeraanduiding_id": nid or None,
-            "postcode": postcode or None,
-            "huisnummer": huisnummer,
-            "suffix": suffix or None,
-            "street": street or None,
-            "city": city or None,
-        }
         asyncio.create_task(estimate_value_for_address(addr_key, address, woz_eur))
 
-    qs = urlencode({
-        k: v for k, v in {
-            "nid": nid, "postcode": postcode, "huisnummer": huisnummer,
-            "suffix": suffix, "street": street, "city": city, "woz_eur": woz_eur,
-        }.items() if v not in (None, "")
-    })
+    return templates.TemplateResponse(
+        request, "partials/house_info_value_panel.html",
+        {"estimate": estimate, "qs": qs, "current_user": current_user},
+    )
+
+
+@router.post("/house-info/value-card/recompute", response_class=HTMLResponse)
+async def house_info_value_recompute(
+    request: Request,
+    nid: str = "",
+    postcode: str = "",
+    huisnummer: int | None = None,
+    suffix: str = "",
+    street: str = "",
+    city: str = "",
+    woz_eur: int | None = None,
+    current_user: User = Depends(require_auth),
+):
+    """Force a fresh market-value estimate for a looked-up address.
+
+    Recomputes synchronously (bypassing the 7-day cache) and returns the
+    re-rendered value panel — mirroring the bid card's Recompute button.
+    """
+    if huisnummer is None and not nid:
+        return HTMLResponse("")
+
+    addr_key = _addr_key(nid, postcode, huisnummer, suffix)
+    address, qs = _value_params(nid, postcode, huisnummer, suffix, street, city, woz_eur)
+    estimate = await estimate_value_for_address(addr_key, address, woz_eur)
+    if estimate is None:
+        # A compute is already in flight — fall back to whatever's cached.
+        estimate = await get_cached_value_estimate(addr_key)
+
     return templates.TemplateResponse(
         request, "partials/house_info_value_panel.html",
         {"estimate": estimate, "qs": qs, "current_user": current_user},
