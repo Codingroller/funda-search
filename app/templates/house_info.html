@@ -29,6 +29,23 @@
   </div>
 </form>
 
+{% if recent_searches %}
+<div class="recent-searches">
+  <h2 class="recent-searches-title">Recent searches</h2>
+  <ul class="recent-search-list">
+    {% for r in recent_searches %}
+    <li>
+      <a href="{{ r.url }}" class="recent-search-item" onclick="showSpinner('Getting house data…')">
+        <span class="recent-search-icon" aria-hidden="true">🏠</span>
+        <span class="recent-search-label">{{ r.label }}</span>
+        <span class="recent-search-arrow" aria-hidden="true">→</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 <script>
   // Close the dropdown when clicking outside
   document.addEventListener('click', function (e) {

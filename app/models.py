@@ -273,3 +273,22 @@ class Pc4WozRatio(Base):
     ratio = Column(Float, nullable=False)
     n = Column(Integer, nullable=False, default=0)   # number of comp pairs behind the median
     fetched_at = Column(DateTime(timezone=True), default=now_utc)
+
+
+class HouseInfoSearch(Base):
+    """A user's recent House-info address lookups (for the 'recent searches' list).
+
+    One row per (user, address); re-searching an address just bumps searched_at.
+    """
+    __tablename__ = "house_info_searches"
+    __table_args__ = (
+        Index("ix_house_info_searches_user_time", "user_id", "searched_at"),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"),
+                     nullable=False, index=True)
+    pdok_id = Column(String, nullable=True)     # exact re-resolve; falls back to `query`
+    label = Column(String, nullable=False)      # display text
+    query = Column(String, nullable=True)       # free-text fallback for the link
+    searched_at = Column(DateTime(timezone=True), default=now_utc)

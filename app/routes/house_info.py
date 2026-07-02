@@ -6,23 +6,86 @@ Slow/uncertain path (loaded lazily over HTMX): a best-effort match to a live Fun
 listing + its AI bid estimate, shown only if the address is currently for sale.
 """
 import asyncio
-from urllib.parse import urlencode
+import logging
+from urllib.parse import quote, urlencode
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
+from sqlalchemy import delete, select
 
 from app.address_lookup import lookup_address, resolve_free_text, suggest_addresses
 from app.auth import require_auth
 from app.bid_estimator import compute_bid_estimate, get_cached_estimate
 from app.cbs_client import get_buurtcode_from_coords, get_crime_stats, get_neighbourhood_stats
 from app.cbs_view import build_crime_view, build_view
+from app.db import AsyncSessionLocal
 from app.funda_client import find_funda_listing
-from app.models import User
+from app.models import HouseInfoSearch, User
 from app.templates_env import templates
+from app.time_utils import now_utc
 from app.value_estimator import estimate_value_for_address, get_cached_value_estimate
 from app.woz_client import get_woz
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+_RECENT_LIMIT = 5     # recent searches shown under the search box
+_RECENT_KEEP = 20     # rows retained per user before pruning
+
+
+async def _record_search(user_id: int, address: dict) -> None:
+    """Remember a resolved address as a recent search (best-effort; dedups by
+    pdok_id, else by label). Never lets a failure break the result page."""
+    label = address.get("label")
+    if not label:
+        return
+    pdok_id = address.get("pdok_id")
+    try:
+        async with AsyncSessionLocal() as db:
+            stmt = select(HouseInfoSearch).where(HouseInfoSearch.user_id == user_id)
+            stmt = (stmt.where(HouseInfoSearch.pdok_id == pdok_id) if pdok_id
+                    else stmt.where(HouseInfoSearch.label == label))
+            existing = (await db.execute(stmt)).scalars().first()
+            now = now_utc()
+            if existing:
+                existing.searched_at = now
+                existing.label = label
+                existing.query = label
+                existing.pdok_id = pdok_id
+            else:
+                db.add(HouseInfoSearch(user_id=user_id, pdok_id=pdok_id,
+                                       label=label, query=label, searched_at=now))
+            await db.commit()
+
+            # Prune to keep the table small per user.
+            ids = (await db.execute(
+                select(HouseInfoSearch.id).where(HouseInfoSearch.user_id == user_id)
+                .order_by(HouseInfoSearch.searched_at.desc())
+            )).scalars().all()
+            if len(ids) > _RECENT_KEEP:
+                await db.execute(
+                    delete(HouseInfoSearch).where(HouseInfoSearch.id.in_(ids[_RECENT_KEEP:]))
+                )
+                await db.commit()
+    except Exception:
+        logger.warning("Failed to record house-info search", exc_info=True)
+
+
+async def _recent_searches(user_id: int, limit: int = _RECENT_LIMIT) -> list[dict]:
+    """Return the user's most recent lookups as [{label, url}] for the search page."""
+    async with AsyncSessionLocal() as db:
+        rows = (await db.execute(
+            select(HouseInfoSearch).where(HouseInfoSearch.user_id == user_id)
+            .order_by(HouseInfoSearch.searched_at.desc()).limit(limit)
+        )).scalars().all()
+    out = []
+    for r in rows:
+        if r.pdok_id:
+            url = f"/house-info/result?pdok_id={quote(r.pdok_id, safe='')}"
+        else:
+            url = f"/house-info/result?q={quote(r.query or r.label, safe='')}"
+        out.append({"label": r.label, "url": url})
+    return out
 
 
 def _addr_key(nid: str, postcode: str, huisnummer: int | None, suffix: str) -> str:
@@ -37,8 +100,10 @@ def _addr_key(nid: str, postcode: str, huisnummer: int | None, suffix: str) -> s
 
 @router.get("/house-info", response_class=HTMLResponse)
 async def house_info_page(request: Request, current_user: User = Depends(require_auth)):
+    recent = await _recent_searches(current_user.id)
     return templates.TemplateResponse(
-        request, "house_info.html", {"current_user": current_user},
+        request, "house_info.html",
+        {"current_user": current_user, "recent_searches": recent},
     )
 
 
@@ -74,6 +139,9 @@ async def house_info_result(
             request, "house_info_result.html",
             {"address": None, "current_user": current_user},
         )
+
+    # Remember this lookup for the "recent searches" list on the search page.
+    await _record_search(current_user.id, address)
 
     # Fast fan-out: WOZ (postcode+huisnummer) + CBS (lat/lon → buurtcode).
     buurtcode = None
