@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import timedelta
 
-from app.bid_comps import gather_cohort, weights_for_cohort
+from app.bid_comps import gather_cohort, market_overbid, weights_for_cohort
 from app.time_utils import as_utc, now_utc
 from app.bid_explain import build_explanation
 from app.bid_model import (
@@ -122,7 +122,10 @@ async def compute_bid_estimate(global_id: str) -> None:
         weights = weights_for_cohort(cohort)
 
         model: FittedModel = fit(all_rows, weights)
-        overbid = settings.bid_overbid_pct
+        overbid, hot = market_overbid(
+            cohort, lo=settings.bid_overbid_min,
+            base=settings.bid_overbid_base, hi=settings.bid_overbid_max,
+        )
         low, recommended, high = predict(model, subject, overbid=overbid)
 
         if recommended == 0:
@@ -139,7 +142,7 @@ async def compute_bid_estimate(global_id: str) -> None:
             adjustments = [{"label": "No comparables found", "delta_pct": 0,
                             "note": "Estimate based on asking price ±5% — no comparable listings found"}]
         else:
-            adjustments = build_explanation(model, subject, cohort, recommended, overbid=overbid)
+            adjustments = build_explanation(model, subject, cohort, recommended, overbid=overbid, hot=hot)
 
         confidence = confidence_level(model)
 

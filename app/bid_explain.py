@@ -44,17 +44,45 @@ def _feature_note(fname: str, raw_val: float | None, mean: float, delta_pct: flo
     return f"{sign}{delta_pct:.1f}% — vs. comparable average"
 
 
-def _overbid_item(overbid: float) -> dict | None:
-    """The competitive over-asking uplift, shown as its own rationale line."""
-    if not overbid or overbid <= 0:
-        return None
+def _overbid_item(overbid: float, hot: dict | None = None) -> dict | None:
+    """The competitive over-asking uplift, shown as its own rationale line.
+
+    The uplift is market-hotness aware (bid_comps.market_overbid): it scales with
+    the local sell-through rate, so the note explains *why* this much was added.
+    """
     pct = overbid * 100
+
+    # Describe the local market when we have a hotness read.
+    context = ""
+    if hot:
+        n_sold = hot.get("n_recent_sold")
+        n_active = hot.get("n_active")
+        if hot.get("thin"):
+            context = " — too few recent local sales to gauge the market, so a neutral uplift is used"
+        elif n_sold is not None and n_active is not None:
+            st = hot.get("sell_through")
+            heat = "hot" if (st or 0) >= 0.55 else ("balanced" if (st or 0) >= 0.4 else "cool")
+            context = (
+                f" — local market looks {heat} "
+                f"({n_sold} recently sold vs {n_active} still for sale)"
+            )
+
+    if not overbid or overbid <= 0:
+        # Cold market: no uplift. Still surface the reasoning when we know it.
+        if not hot:
+            return None
+        return {
+            "label": "Competitive bid uplift",
+            "delta_pct": 0,
+            "note": f"No uplift — bidding at fitted fair value{context}",
+        }
+
     return {
         "label": "Competitive bid uplift",
         "delta_pct": round(pct, 1),
         "note": (
             f"+{pct:.1f}% over fitted fair value — comparables reflect asking prices, "
-            f"but Dutch homes typically sell above asking, so the bid is sized to win"
+            f"but homes here sell above asking, so the bid is sized to win{context}"
         ),
     }
 
@@ -65,13 +93,14 @@ def build_explanation(
     cohort: "CompCohort",  # noqa: F821
     recommended: int,
     overbid: float = 0.0,
+    hot: dict | None = None,
 ) -> list[dict]:
     """Return [{label, delta_pct, note}] for the rationale modal."""
     items: list[dict] = []
     n_active = len(getattr(cohort, "active", []))
     n_sold = len(getattr(cohort, "sold", []))
     total_n = n_active + n_sold
-    overbid_item = _overbid_item(overbid)
+    overbid_item = _overbid_item(overbid, hot)
 
     if model.fallback:
         ppm_note = f" at {_fmt_eur(int(model.median_ppm))}/m²" if model.median_ppm else ""

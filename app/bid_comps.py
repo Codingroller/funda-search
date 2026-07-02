@@ -25,6 +25,17 @@ _SOLD_LOOKBACK_DAYS = 365
 _DECAY_DAYS = 547.5      # 1.5-year decay constant for sold comps
 _PC4_WEIGHT_BOOST = 8.0  # upweight comps in the subject's own PC4 (neighbourhood anchor)
 
+# ── market-hotness (sell-through) → competitive-bid uplift ────────────────────
+# Funda exposes neither realized sale prices nor days-on-market, so we can't
+# measure over-asking directly. We proxy local "hotness" with a sell-through
+# index: of the recently-active + recently-listed-and-sold homes in the cohort,
+# what share already sold. A high share means homes are clearing fast (tight
+# supply, competitive bidding); a low share means stock is piling up (cold).
+_HOT_WINDOW_DAYS = 120   # only count sold comps listed within this window
+_HOT_MIN_N = 8           # need this many comps to judge hotness; else neutral base
+_SELL_THROUGH_LO = 0.35  # sell-through ≤ this → cold → min uplift
+_SELL_THROUGH_HI = 0.70  # sell-through ≥ this → hot  → max uplift
+
 
 @dataclass
 class CompCohort:
@@ -211,3 +222,63 @@ def weights_for_cohort(cohort: CompCohort) -> list[float]:
         scale = len(ws) / total
         ws = [w * scale for w in ws]
     return ws
+
+
+def _recent_sold_count(sold: list[dict], window_days: int) -> int:
+    """Count sold comps listed within `window_days` of now (undated → counted)."""
+    cutoff = now_utc() - timedelta(days=window_days)
+    n = 0
+    for c in sold:
+        pub = c.get("publication_date")
+        if not pub:
+            n += 1
+            continue
+        try:
+            if as_utc(datetime.fromisoformat(pub[:10])) >= cutoff:
+                n += 1
+        except (ValueError, TypeError):
+            n += 1
+    return n
+
+
+def market_overbid(
+    cohort: CompCohort,
+    *,
+    lo: float = 0.0,
+    base: float = 0.03,
+    hi: float = 0.05,
+) -> tuple[float, dict]:
+    """Competitive-bid uplift scaled by local market hotness (pure, no I/O).
+
+    Replaces the old flat percentage. Hotness is a *sell-through* proxy: of the
+    currently-active homes plus recently-listed-and-sold homes in the cohort,
+    the share that already sold. It maps linearly from `lo` (cold, sell-through
+    ≤ _SELL_THROUGH_LO) to `hi` (hot, sell-through ≥ _SELL_THROUGH_HI). When the
+    cohort is too thin to judge (< _HOT_MIN_N comps) it returns the neutral
+    `base`. Shared by the listing bid estimator and the address value estimator.
+
+    Returns (overbid_fraction, meta) where meta feeds the rationale line.
+    """
+    n_active = len(cohort.active)
+    n_recent_sold = _recent_sold_count(cohort.sold, _HOT_WINDOW_DAYS)
+    total = n_active + n_recent_sold
+
+    if total < _HOT_MIN_N:
+        return base, {
+            "overbid_pct": round(base * 100, 1), "sell_through": None,
+            "n_recent_sold": n_recent_sold, "n_active": n_active, "hotness": None,
+            "thin": True,
+        }
+
+    sell_through = n_recent_sold / total
+    span = _SELL_THROUGH_HI - _SELL_THROUGH_LO
+    hotness = (sell_through - _SELL_THROUGH_LO) / span if span > 0 else 0.0
+    hotness = min(max(hotness, 0.0), 1.0)
+    overbid = lo + (hi - lo) * hotness
+
+    return overbid, {
+        "overbid_pct": round(overbid * 100, 1),
+        "sell_through": round(sell_through, 3),
+        "n_recent_sold": n_recent_sold, "n_active": n_active,
+        "hotness": round(hotness, 3), "thin": False,
+    }

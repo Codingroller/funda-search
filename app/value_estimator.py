@@ -24,7 +24,7 @@ import statistics
 from datetime import timedelta
 
 from app.bag_client import get_bag_info
-from app.bid_comps import gather_cohort, weights_for_cohort
+from app.bid_comps import gather_cohort, market_overbid, weights_for_cohort
 from app.bid_estimator import compute_bid_estimate, get_cached_estimate
 from app.bid_explain import build_explanation
 from app.bid_model import CURRENT_MODEL_VERSION, confidence_level, fit, predict
@@ -123,7 +123,10 @@ async def estimate_value_for_address(
         cohort = await gather_cohort(subject)
         weights = weights_for_cohort(cohort)
         model = fit(cohort.active + cohort.sold, weights)
-        overbid = settings.bid_overbid_pct
+        overbid, hot = market_overbid(
+            cohort, lo=settings.bid_overbid_min,
+            base=settings.bid_overbid_base, hi=settings.bid_overbid_max,
+        )
         low, recommended, high = predict(model, subject, overbid=overbid)
 
         if recommended <= 0:
@@ -131,7 +134,7 @@ async def estimate_value_for_address(
             await _persist_unavailable(addr_key, subject_woz_eur, bag)
             return await get_cached_value_estimate(addr_key)
 
-        adjustments = build_explanation(model, subject, cohort, recommended, overbid=overbid)
+        adjustments = build_explanation(model, subject, cohort, recommended, overbid=overbid, hot=hot)
         confidence = confidence_level(model)
 
         anchor = await _woz_anchor(subject_woz_eur, pc4, recommended, cohort=cohort)

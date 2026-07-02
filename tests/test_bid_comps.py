@@ -6,6 +6,7 @@ from unittest.mock import patch
 from app.bid_comps import (
     CompCohort,
     gather_cohort,
+    market_overbid,
     _filter_sold_recent,
     _is_valid,
 )
@@ -182,3 +183,63 @@ class TestGatherCohort:
         assert isinstance(cohort, CompCohort)
         assert cohort.active == []
         assert cohort.sold == []
+
+
+# ── TestMarketOverbid ─────────────────────────────────────────────────────
+
+def _cohort(n_active=0, n_sold_recent=0, n_sold_stale=0):
+    active = [_comp(global_id=f"a{i}") for i in range(n_active)]
+    sold = (
+        [_comp(global_id=f"sr{i}", pub=_RECENT) for i in range(n_sold_recent)]
+        + [_comp(global_id=f"ss{i}", pub=_STALE) for i in range(n_sold_stale)]
+    )
+    return CompCohort(active=active, sold=sold)
+
+
+class TestMarketOverbid:
+    def test_hot_market_reaches_max(self):
+        # 12 recent sold vs 3 active → sell-through 0.80 ≥ 0.70 → max uplift
+        overbid, meta = market_overbid(_cohort(n_active=3, n_sold_recent=12),
+                                       lo=0.0, base=0.03, hi=0.06)
+        assert overbid == 0.06
+        assert meta["hotness"] == 1.0
+        assert meta["sell_through"] == 0.8
+        assert meta["thin"] is False
+
+    def test_cold_market_reaches_min(self):
+        # 1 recent sold vs 20 active → sell-through ≈ 0.05 ≤ 0.35 → min uplift
+        overbid, meta = market_overbid(_cohort(n_active=20, n_sold_recent=1),
+                                       lo=0.0, base=0.03, hi=0.06)
+        assert overbid == 0.0
+        assert meta["hotness"] == 0.0
+
+    def test_balanced_market_between_bounds(self):
+        # 6 recent sold vs 8 active → sell-through ≈ 0.43 → strictly interior
+        overbid, meta = market_overbid(_cohort(n_active=8, n_sold_recent=6),
+                                       lo=0.0, base=0.03, hi=0.06)
+        assert 0.0 < overbid < 0.06
+        assert 0.0 < meta["hotness"] < 1.0
+
+    def test_thin_cohort_returns_base(self):
+        overbid, meta = market_overbid(_cohort(n_active=2, n_sold_recent=2),
+                                       lo=0.0, base=0.03, hi=0.06)
+        assert overbid == 0.03
+        assert meta["thin"] is True
+        assert meta["sell_through"] is None
+
+    def test_stale_sold_not_counted_as_recent(self):
+        # 10 active + 10 stale sold: none within the window → sell-through 0 → min
+        overbid, meta = market_overbid(_cohort(n_active=10, n_sold_stale=10),
+                                       lo=0.0, base=0.03, hi=0.06)
+        assert meta["n_recent_sold"] == 0
+        assert overbid == 0.0
+
+    def test_custom_band_is_respected(self):
+        overbid, _ = market_overbid(_cohort(n_active=2, n_sold_recent=13),
+                                    lo=0.01, base=0.02, hi=0.10)
+        assert overbid == 0.10  # hot → hits custom max
+
+    def test_meta_reports_counts(self):
+        _, meta = market_overbid(_cohort(n_active=5, n_sold_recent=7))
+        assert meta["n_active"] == 5
+        assert meta["n_recent_sold"] == 7
