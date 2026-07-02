@@ -1,13 +1,20 @@
 <div class="modal-header">
-  <h2>Why {{ estimate.recommended_fmt }}?</h2>
+  <h2>Why {{ sel_value_fmt or estimate.recommended_fmt }}?</h2>
   <button class="btn-close" onclick="document.getElementById('bid-rationale-modal').style.display='none'">✕</button>
 </div>
 <div class="modal-body">
+  {% if cond_label %}
+  <p class="text-muted small">
+    <strong>{{ cond_label }} condition</strong> places this home at the {{ cond_pos }} of the estimated range
+    ({{ estimate.low_fmt }} – {{ estimate.high_fmt }}) — {{ sel_value_fmt or estimate.recommended_fmt }}.
+  </p>
+  {% endif %}
+
   {% if estimate.comparables_count > 0 %}
   <p class="text-muted small">
     Based on {{ estimate.comparables_count }} comparable listing{% if estimate.comparables_count != 1 %}s{% endif %}
     {% if estimate.median_price_per_m2 %} at {{ "€ {:,}".format(estimate.median_price_per_m2 | int).replace(",", ".") }}/m²{% endif %}.
-    Range: {{ estimate.low_fmt }} – {{ estimate.high_fmt }}.
+    The percentages below explain how the central estimate was derived.
   </p>
   {% endif %}
 

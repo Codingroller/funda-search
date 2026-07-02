@@ -6,6 +6,7 @@ from sqlalchemy import select
 
 from app.auth import require_auth
 from app.bid_estimator import compute_bid_estimate, get_cached_estimate, get_estimate_force
+from app.bid_explain import condition_view
 from app.db import AsyncSessionLocal
 from app.funda_client import get_listing_detail
 from app.models import LikedListing, User
@@ -69,6 +70,7 @@ async def bid_estimate_recompute(
 async def bid_estimate_rationale(
     request: Request,
     global_id: str,
+    cond: str = "mid",
     current_user: User = Depends(require_auth),
 ):
     estimate = await get_cached_estimate(global_id)
@@ -76,5 +78,5 @@ async def bid_estimate_rationale(
         return HTMLResponse("<p>No estimate available yet.</p>")
     return templates.TemplateResponse(
         request, "partials/bid_estimate_rationale.html",
-        {"estimate": estimate, "global_id": global_id},
+        {"estimate": estimate, "global_id": global_id, **condition_view(estimate, cond)},
     )

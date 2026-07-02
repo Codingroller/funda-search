@@ -53,11 +53,7 @@
               onclick="document.getElementById('bid-rationale-modal').style.display='flex'"
               hx-get="/house-info/value-rationale?{{ qs }}"
               hx-target="#bid-rationale-modal-body"
-              hx-swap="innerHTML"
-              hx-disabled-elt="this">
-        <span class="btn-label">Why this value?</span>
-        <span class="btn-spinner" aria-hidden="true"><span class="spinner-ring-sm"></span></span>
-      </button>
+              hx-swap="innerHTML">Why this value?</button>
       <button class="btn btn-sm"
               hx-post="/house-info/value-card/recompute?{{ qs }}"
               hx-target="#house-info-value"

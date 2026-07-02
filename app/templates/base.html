@@ -139,6 +139,18 @@
       });
       var noteEl = card.querySelector('[data-cond-note]');
       if (noteEl && NOTES[pos]) noteEl.textContent = NOTES[pos];
+      // Point the "Why this value?" rationale request at the selected band
+      // position so the modal explains the number actually shown on the card.
+      var ratBtn = card.querySelector('[hx-get*="rationale"]');
+      if (ratBtn) {
+        var base = ratBtn.getAttribute('data-rat-base');
+        if (base === null) {
+          base = ratBtn.getAttribute('hx-get');
+          ratBtn.setAttribute('data-rat-base', base);
+        }
+        var sep = base.indexOf('?') === -1 ? '?' : '&';
+        ratBtn.setAttribute('hx-get', base + sep + 'cond=' + pos);
+      }
     });
   })();
   </script>

@@ -16,6 +16,7 @@ from sqlalchemy import delete, select
 from app.address_lookup import lookup_address, resolve_free_text, suggest_addresses
 from app.auth import require_auth
 from app.bid_estimator import compute_bid_estimate, get_cached_estimate
+from app.bid_explain import condition_view
 from app.cbs_client import get_buurtcode_from_coords, get_crime_stats, get_neighbourhood_stats
 from app.cbs_view import build_crime_view, build_view
 from app.db import AsyncSessionLocal
@@ -305,16 +306,18 @@ async def house_info_value_rationale(
     postcode: str = "",
     huisnummer: int | None = None,
     suffix: str = "",
+    cond: str = "mid",
     current_user: User = Depends(require_auth),
 ):
     addr_key = _addr_key(nid, postcode, huisnummer, suffix)
     estimate = await get_cached_value_estimate(addr_key)
     if not estimate:
         return HTMLResponse("<p>No estimate available yet.</p>")
-    # bid_estimate_rationale.html is generic over estimate.adjustments.
+    # bid_estimate_rationale.html is generic over estimate.adjustments; cond
+    # reflects the condition zone selected on the gauge.
     return templates.TemplateResponse(
         request, "partials/bid_estimate_rationale.html",
-        {"estimate": estimate, "global_id": addr_key},
+        {"estimate": estimate, "global_id": addr_key, **condition_view(estimate, cond)},
     )
 
 

@@ -14,6 +14,33 @@ from app.bid_model import (
     _fmt_eur,
 )
 
+# Condition-gauge positions (must match the cond-zone buttons in the templates).
+_CONDITION_LABELS = {"low": "Needs work", "mid": "Average", "high": "Good"}
+_CONDITION_POS = {"low": "lower end", "mid": "middle", "high": "upper end"}
+
+
+def condition_view(estimate: dict, cond: str) -> dict:
+    """Map a condition-gauge position to the value + label the rationale shows.
+
+    The condition gauge repositions the headline within the low–high band
+    (needs-work → low, average → recommended, good → high). The rationale modal
+    is fetched per-open with the active ``cond`` so its header and condition line
+    reflect the number actually displayed on the card.
+    """
+    cond = cond if cond in _CONDITION_LABELS else "mid"
+    value_fmt = {
+        "low": estimate.get("low_fmt"),
+        "mid": estimate.get("recommended_fmt"),
+        "high": estimate.get("high_fmt"),
+    }[cond]
+    return {
+        "cond": cond,
+        "cond_label": _CONDITION_LABELS[cond],
+        "cond_pos": _CONDITION_POS[cond],
+        "sel_value_fmt": value_fmt,
+    }
+
+
 # Display label + short description for each feature
 _FEATURE_LABELS: dict[str, str] = {
     "log_area":     "Living area",
