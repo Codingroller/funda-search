@@ -17,7 +17,9 @@ dependencies = [
     "Pillow>=10",
     "argon2-cffi>=23",
     "httpx>=0.27",
-    "pyfunda>=3.1.1",
+    # Pinned: 3.1.2 ships a broken _FundaTransport (won't construct). We stay on
+    # 3.1.1 and hotfix the stale search-template id in app/funda_client.py.
+    "pyfunda==3.1.1",
     "numpy>=1.26",
     "python-multipart>=0.0.9",
     "itsdangerous>=2.1",

@@ -10,6 +10,23 @@ except ImportError:
     Funda = None  # type: ignore[assignment,misc]
     ListingNotFound = LookupError  # type: ignore[assignment,misc]
 
+# ── Funda search-template hotfix ──────────────────────────────────────────────
+# pyfunda posts to Funda's server-side stored search template by id. On
+# 2026-07-02 Funda re-indexed (search-listings-prod-*) and dropped the
+# `placement_type` field, which the template pinned in pyfunda 3.1.1
+# ("search_result_20250805") still sorts on — so every search returns an
+# Elasticsearch shard error and 0 results (breaking saved queries, bid comps,
+# and address value estimates). pyfunda 3.1.2 ships the current template id but
+# its _FundaTransport is broken (won't construct), so we can't upgrade. Instead
+# we bump just the one stale constant to the current template. Self-disables if
+# the installed library is ever updated past the stale id.
+try:
+    import funda.search as _funda_search
+    if getattr(_funda_search, "SEARCH_TEMPLATE_ID", None) == "search_result_20250805":
+        _funda_search.SEARCH_TEMPLATE_ID = "search_result_20260227"
+except Exception:  # pragma: no cover — never let a hotfix break import
+    pass
+
 from app.db import AsyncSessionLocal
 from app.image_cache import cache_hero_sync, cache_photo_sync
 from app.models import ListingCache
