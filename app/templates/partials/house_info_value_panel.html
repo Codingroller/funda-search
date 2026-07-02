@@ -1,0 +1,72 @@
+{% if estimate and estimate.from_listing %}
+{# Address is for sale — the richer bid card is shown by the Funda panel below. #}
+<div id="house-info-value" class="detail-section">
+  <h2 class="detail-section-title">Estimated market value</h2>
+  <p class="text-muted">This home is currently for sale — see the bid estimate below.</p>
+</div>
+{% elif estimate and estimate.confidence != "unavailable" %}
+<div id="house-info-value" class="detail-section">
+  <h2 class="detail-section-title">Estimated market value</h2>
+  <div class="bid-card">
+    <div class="bid-card-main">
+      <div class="bid-card-label">Estimated value</div>
+      <div class="bid-card-amount">{{ estimate.recommended_fmt }}</div>
+    </div>
+    <div class="bid-card-range">
+      <span class="bid-range-bound">{{ estimate.low_fmt }}</span>
+      <div class="bid-range-track">
+        <div class="bid-range-fill"></div>
+      </div>
+      <span class="bid-range-bound">{{ estimate.high_fmt }}</span>
+    </div>
+    <div class="bid-card-confidence">
+      {% if estimate.confidence == "low" %}
+      <span class="pill pending" title="Limited comparable listings; range is wider to reflect uncertainty">Low confidence</span>
+      {% else %}
+      <span class="pill draft">Normal confidence</span>
+      {% endif %}
+    </div>
+    {% if estimate.woz_eur and estimate.woz_ratio_source == "pc4-comps" and estimate.woz_implied_eur %}
+    <p class="text-muted small bid-card-meta">
+      WOZ-implied ≈ {{ estimate.woz_implied_fmt }} · WOZ {{ estimate.woz_eur_fmt }} × local {{ "%.2f"|format(estimate.woz_ratio) }} asking/WOZ
+    </p>
+    {% elif estimate.woz_eur and estimate.woz_ratio %}
+    <p class="text-muted small bid-card-meta">
+      WOZ {{ estimate.woz_eur_fmt }} · estimate is {{ "%.2f"|format(estimate.woz_ratio) }}× the WOZ
+    </p>
+    {% endif %}
+    <div class="bid-card-actions">
+      <button class="btn btn-sm"
+              onclick="document.getElementById('bid-rationale-modal').style.display='flex'"
+              hx-get="/house-info/value-rationale?{{ qs }}"
+              hx-target="#bid-rationale-modal-body"
+              hx-swap="innerHTML"
+              hx-disabled-elt="this">
+        <span class="btn-label">Why this value?</span>
+        <span class="btn-spinner" aria-hidden="true"><span class="spinner-ring-sm"></span></span>
+      </button>
+    </div>
+    <p class="text-muted small bid-card-meta">
+      Not currently for sale — estimated from {{ estimate.comparables_count }} comparable listing{% if estimate.comparables_count != 1 %}s{% endif %}
+      {% if estimate.median_price_per_m2 %} · {{ "€ {:,}".format(estimate.median_price_per_m2 | int).replace(",", ".") }}/m² avg.{% endif %}
+      {% if estimate.living_area %} · {{ estimate.living_area }} m²{% if estimate.construction_year %}, built {{ estimate.construction_year }}{% endif %}{% endif %}
+    </p>
+    <p class="text-muted small">For guidance only — not a valuation or financial advice.</p>
+  </div>
+</div>
+{% elif estimate and estimate.confidence == "unavailable" %}
+<div id="house-info-value" class="detail-section">
+  <h2 class="detail-section-title">Estimated market value</h2>
+  <p class="text-muted">
+    We couldn't estimate a value for this address — not enough comparable sales nearby{% if not estimate.living_area %}, and its floor area isn't in the BAG registry{% endif %}.
+  </p>
+</div>
+{% else %}
+<div id="house-info-value" class="detail-section"
+     hx-get="/house-info/value-card?{{ qs }}"
+     hx-trigger="load delay:4s, every 6s"
+     hx-swap="outerHTML">
+  <h2 class="detail-section-title">Estimated market value</h2>
+  <p class="text-muted bid-computing">Estimating market value…</p>
+</div>
+{% endif %}

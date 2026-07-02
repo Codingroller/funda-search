@@ -199,3 +199,77 @@ class BidEstimate(Base):
     n_sold = Column(Integer, nullable=True)
     r2 = Column(Float, nullable=True)
     residual_std = Column(Float, nullable=True)
+
+
+class BagInfo(Base):
+    """BAG building attributes for an address (keyless PDOK BAG OGC v2).
+
+    Supplies the subject floor area / build year / type needed to value an
+    address that is NOT currently for sale on Funda. Cached ~1 year (BAG is
+    near-static); a failed lookup is negative-cached (last_error set).
+    """
+    __tablename__ = "bag_info"
+
+    nummeraanduiding_id = Column(String, primary_key=True)
+    postcode = Column(String, nullable=True, index=True)
+    huisnummer = Column(Integer, nullable=True)
+    huisnummertoevoeging = Column(String, nullable=True)
+    living_area = Column(Integer, nullable=True)          # gebruiksoppervlakte m²
+    construction_year = Column(Integer, nullable=True)    # pand bouwjaar
+    gebruiksdoel = Column(String, nullable=True)          # e.g. "woonfunctie"
+    object_kind = Column(String, nullable=True)           # Verblijfsobject | Ligplaats | Standplaats
+    aantal_verblijfsobjecten = Column(Integer, nullable=True)
+    is_apartment = Column(Boolean, nullable=True)         # heuristic; None = unknown
+    fetched_at = Column(DateTime(timezone=True), default=now_utc)
+    last_error = Column(String, nullable=True)
+
+
+class ValueEstimate(Base):
+    """Market-value estimate for a looked-up address (House info page).
+
+    Mirrors BidEstimate but is keyed by a synthetic addr_key (the BAG
+    nummeraanduiding_id, or an ``addr:{pc}-{nr}{suffix}`` fallback) so it works
+    for addresses that aren't on Funda. Adds the BAG inputs and WOZ cross-check.
+    """
+    __tablename__ = "value_estimates"
+
+    addr_key = Column(String, primary_key=True)
+    low = Column(Integer, nullable=False)
+    recommended = Column(Integer, nullable=False)
+    high = Column(Integer, nullable=False)
+    comparables_count = Column(Integer, nullable=False)
+    median_price_per_m2 = Column(Float, nullable=True)
+    confidence = Column(String, default="normal")   # normal | low | unavailable
+    adjustments_json = Column(Text, nullable=False, default="[]")
+    computed_at = Column(DateTime(timezone=True), default=now_utc)
+    model_version = Column(String, nullable=True)
+    tier = Column(String, nullable=True)
+    n_active = Column(Integer, nullable=True)
+    n_sold = Column(Integer, nullable=True)
+    r2 = Column(Float, nullable=True)
+    residual_std = Column(Float, nullable=True)
+    # Subject attributes sourced from BAG (for display / provenance)
+    living_area = Column(Integer, nullable=True)
+    construction_year = Column(Integer, nullable=True)
+    is_apartment = Column(Boolean, nullable=True)
+    # WOZ cross-check anchor
+    woz_eur = Column(Integer, nullable=True)
+    woz_ratio = Column(Float, nullable=True)             # local asking/WOZ ratio applied
+    woz_implied_eur = Column(Integer, nullable=True)     # woz_eur × woz_ratio
+    woz_ratio_source = Column(String, nullable=True)     # pc4-comps | self-implied | None
+    # True when the numbers were taken from a live Funda listing (address is for sale)
+    from_listing = Column(Boolean, nullable=True)
+
+
+class Pc4WozRatio(Base):
+    """Cached local WOZ→market (asking/WOZ) ratio for a 4-digit postcode area.
+
+    Lets later address lookups in the same PC4 reuse the ratio without repeating
+    the (bounded) per-comp WOZ lookups. Short TTL — the market moves.
+    """
+    __tablename__ = "pc4_woz_ratios"
+
+    pc4 = Column(String, primary_key=True)
+    ratio = Column(Float, nullable=False)
+    n = Column(Integer, nullable=False, default=0)   # number of comp pairs behind the median
+    fetched_at = Column(DateTime(timezone=True), default=now_utc)

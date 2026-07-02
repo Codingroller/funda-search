@@ -6,6 +6,7 @@ Slow/uncertain path (loaded lazily over HTMX): a best-effort match to a live Fun
 listing + its AI bid estimate, shown only if the address is currently for sale.
 """
 import asyncio
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
@@ -18,9 +19,20 @@ from app.cbs_view import build_crime_view, build_view
 from app.funda_client import find_funda_listing
 from app.models import User
 from app.templates_env import templates
+from app.value_estimator import estimate_value_for_address, get_cached_value_estimate
 from app.woz_client import get_woz
 
 router = APIRouter()
+
+
+def _addr_key(nid: str, postcode: str, huisnummer: int | None, suffix: str) -> str:
+    """The ValueEstimate/WOZ cache key: BAG id when known, else a synthetic address key."""
+    if nid:
+        return nid
+    return (
+        f"addr:{(postcode or '').replace(' ', '')}"
+        f"-{huisnummer}{(suffix or '').lower()}"
+    )
 
 
 @router.get("/house-info", response_class=HTMLResponse)
@@ -131,6 +143,71 @@ async def house_info_funda_panel(
             "is_liked": False,
             "current_user": current_user,
         },
+    )
+
+
+@router.get("/house-info/value-card", response_class=HTMLResponse)
+async def house_info_value_card(
+    request: Request,
+    nid: str = "",
+    postcode: str = "",
+    huisnummer: int | None = None,
+    suffix: str = "",
+    street: str = "",
+    city: str = "",
+    woz_eur: int | None = None,
+    current_user: User = Depends(require_auth),
+):
+    """Self-polling market-value card for a looked-up address (listed or not).
+
+    Kicks off the estimate in the background on first load, then polls itself
+    (hx-trigger) until the estimate lands — mirroring the bid-estimate card.
+    """
+    if huisnummer is None and not nid:
+        return HTMLResponse("")
+
+    addr_key = _addr_key(nid, postcode, huisnummer, suffix)
+    estimate = await get_cached_value_estimate(addr_key)
+    if estimate is None:
+        address = {
+            "nummeraanduiding_id": nid or None,
+            "postcode": postcode or None,
+            "huisnummer": huisnummer,
+            "suffix": suffix or None,
+            "street": street or None,
+            "city": city or None,
+        }
+        asyncio.create_task(estimate_value_for_address(addr_key, address, woz_eur))
+
+    qs = urlencode({
+        k: v for k, v in {
+            "nid": nid, "postcode": postcode, "huisnummer": huisnummer,
+            "suffix": suffix, "street": street, "city": city, "woz_eur": woz_eur,
+        }.items() if v not in (None, "")
+    })
+    return templates.TemplateResponse(
+        request, "partials/house_info_value_panel.html",
+        {"estimate": estimate, "qs": qs, "current_user": current_user},
+    )
+
+
+@router.get("/house-info/value-rationale", response_class=HTMLResponse)
+async def house_info_value_rationale(
+    request: Request,
+    nid: str = "",
+    postcode: str = "",
+    huisnummer: int | None = None,
+    suffix: str = "",
+    current_user: User = Depends(require_auth),
+):
+    addr_key = _addr_key(nid, postcode, huisnummer, suffix)
+    estimate = await get_cached_value_estimate(addr_key)
+    if not estimate:
+        return HTMLResponse("<p>No estimate available yet.</p>")
+    # bid_estimate_rationale.html is generic over estimate.adjustments.
+    return templates.TemplateResponse(
+        request, "partials/bid_estimate_rationale.html",
+        {"estimate": estimate, "global_id": addr_key},
     )
 
 

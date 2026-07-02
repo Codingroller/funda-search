@@ -26,6 +26,19 @@
 {# ── WOZ value ── #}
 {% include "partials/woz_panel.html" %}
 
+{# ── Estimated market value (loaded lazily; works for any address, listed or not) ── #}
+{% if address.postcode and address.huisnummer %}
+<div id="house-info-value"
+     hx-get="/house-info/value-card?nid={{ (address.nummeraanduiding_id or '') | url_quote }}&postcode={{ address.postcode | url_quote }}&huisnummer={{ address.huisnummer }}&suffix={{ (address.suffix or '') | url_quote }}&street={{ (address.street or '') | url_quote }}&city={{ (address.city or '') | url_quote }}{% if woz and woz.latest_woz_eur %}&woz_eur={{ woz.latest_woz_eur }}{% endif %}"
+     hx-trigger="load"
+     hx-swap="outerHTML">
+  <div class="detail-section">
+    <h2 class="detail-section-title">Estimated market value</h2>
+    <p class="text-muted bid-computing">Estimating market value…</p>
+  </div>
+</div>
+{% endif %}
+
 {# ── Funda listing + bid estimate (loaded lazily; the slow/uncertain part) ── #}
 {% if address.postcode and address.huisnummer %}
 <div id="house-info-funda"

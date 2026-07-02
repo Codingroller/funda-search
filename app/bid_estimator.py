@@ -7,10 +7,9 @@ from __future__ import annotations
 
 import json
 import logging
-import math
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from app.bid_comps import gather_cohort
+from app.bid_comps import gather_cohort, weights_for_cohort
 from app.time_utils import as_utc, now_utc
 from app.bid_explain import build_explanation
 from app.bid_model import (
@@ -30,8 +29,6 @@ logger = logging.getLogger(__name__)
 
 _BID_TTL = timedelta(days=7)
 _computing: set[str] = set()   # global_ids currently being computed
-_DECAY_DAYS = 547.5            # 1.5-year decay constant for sold comps
-_PC4_WEIGHT_BOOST = 8.0        # upweight comps in the subject's own PC4 (neighbourhood anchor)
 
 
 def _is_sold(subject: dict) -> bool:
@@ -43,36 +40,6 @@ def _fmt_eur(amount: int | None) -> str:
     if not amount:
         return "—"
     return f"€ {amount:,}".replace(",", ".")
-
-
-def _weights_for_cohort(cohort) -> list[float]:
-    now = now_utc()
-    ws: list[float] = [1.0] * len(cohort.active)
-    for c in cohort.sold:
-        pub = c.get("publication_date")
-        try:
-            delta = (now - as_utc(datetime.fromisoformat(pub[:10]))).days
-            ws.append(math.exp(-delta / _DECAY_DAYS))
-        except Exception:
-            ws.append(1.0)
-
-    # Neighbourhood anchoring: when the PC4-tight cohort is too small we fall
-    # back to a city-wide cohort, which dilutes premium/cheap micro-markets
-    # (e.g. a new-build district priced well above the city median). Upweight
-    # comps that share the subject's PC4 so the estimate stays anchored locally.
-    subject_pc4 = cohort.pc4
-    if subject_pc4:
-        for i, c in enumerate(cohort.active + cohort.sold):
-            if (c.get("postcode") or "")[:4] == subject_pc4:
-                ws[i] *= _PC4_WEIGHT_BOOST
-
-    # Preserve total weight so n_eff (OLS/ridge/confidence thresholds) is unchanged;
-    # only the *relative* weighting shifts toward the local market.
-    total = sum(ws)
-    if total > 0:
-        scale = len(ws) / total
-        ws = [w * scale for w in ws]
-    return ws
 
 
 async def _upsert(
@@ -152,7 +119,7 @@ async def compute_bid_estimate(global_id: str) -> None:
 
         cohort = await gather_cohort(subject)
         all_rows = cohort.active + cohort.sold
-        weights = _weights_for_cohort(cohort)
+        weights = weights_for_cohort(cohort)
 
         model: FittedModel = fit(all_rows, weights)
         overbid = settings.bid_overbid_pct

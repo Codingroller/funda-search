@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 from app.funda_client import get_listing_detail, search_listings
-from app.time_utils import now_utc
+from app.time_utils import as_utc, now_utc
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,8 @@ _MAX_ACTIVE = 25
 _MAX_SOLD = 12
 _PC4_MIN = 5             # use PC4 cohort only when we have at least this many
 _SOLD_LOOKBACK_DAYS = 365
+_DECAY_DAYS = 547.5      # 1.5-year decay constant for sold comps
+_PC4_WEIGHT_BOOST = 8.0  # upweight comps in the subject's own PC4 (neighbourhood anchor)
 
 
 @dataclass
@@ -173,3 +176,38 @@ async def _safe_search(params: dict) -> list[dict]:
     except Exception as exc:
         logger.warning("search_listings failed (%s): %r", params.get("category"), exc)
         return []
+
+
+def weights_for_cohort(cohort: CompCohort) -> list[float]:
+    """Sample weights for fit(): time-decay sold comps and upweight same-PC4 comps.
+
+    Pure (no I/O) — shared by both the listing-based bid estimator and the
+    address-based value estimator.
+    """
+    now = now_utc()
+    ws: list[float] = [1.0] * len(cohort.active)
+    for c in cohort.sold:
+        pub = c.get("publication_date")
+        try:
+            delta = (now - as_utc(datetime.fromisoformat(pub[:10]))).days
+            ws.append(math.exp(-delta / _DECAY_DAYS))
+        except Exception:
+            ws.append(1.0)
+
+    # Neighbourhood anchoring: when the PC4-tight cohort is too small we fall
+    # back to a city-wide cohort, which dilutes premium/cheap micro-markets
+    # (e.g. a new-build district priced well above the city median). Upweight
+    # comps that share the subject's PC4 so the estimate stays anchored locally.
+    subject_pc4 = cohort.pc4
+    if subject_pc4:
+        for i, c in enumerate(cohort.active + cohort.sold):
+            if (c.get("postcode") or "")[:4] == subject_pc4:
+                ws[i] *= _PC4_WEIGHT_BOOST
+
+    # Preserve total weight so n_eff (OLS/ridge/confidence thresholds) is unchanged;
+    # only the *relative* weighting shifts toward the local market.
+    total = sum(ws)
+    if total > 0:
+        scale = len(ws) / total
+        ws = [w * scale for w in ws]
+    return ws
