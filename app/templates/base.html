@@ -128,6 +128,8 @@
       var card = zone.closest('.bid-card');
       if (!card) return;
       var pos = zone.getAttribute('data-pos');
+      var gauge = card.querySelector('[data-cond-gauge]');
+      if (gauge) gauge.setAttribute('data-pos', pos);
       var amountEl = card.querySelector('[data-bid-amount]');
       if (amountEl && amountEl.dataset[pos]) amountEl.textContent = amountEl.dataset[pos];
       card.querySelectorAll('.cond-zone').forEach(function (z) {

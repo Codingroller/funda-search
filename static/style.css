@@ -687,37 +687,41 @@ h2 { font-size: 16px; font-weight: 600; }
 .bid-card-amount { font-size: 26px; font-weight: 700; letter-spacing: -0.03em; }
 .bid-card-range { display: flex; align-items: center; gap: 10px; }
 .bid-range-bound { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
-.bid-range-track {
-  flex: 1; height: 6px; background: var(--border-strong); border-radius: 3px; overflow: hidden;
-}
-.bid-range-fill {
-  height: 100%; width: 50%; background: var(--text); border-radius: 3px; opacity: 0.5;
-  margin: 0 auto;
-}
 .bid-card-confidence { display: flex; }
 .bid-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .bid-card-meta { margin: 0; }
 .bid-computing { font-style: italic; }
 
-/* Condition-on-the-bar: three highlighted zones placing the home in the range */
-.cond-block { display: flex; flex-direction: column; gap: 5px; }
-.cond-range { display: flex; align-items: stretch; gap: 10px; }
-.cond-range .bid-range-bound { align-self: center; }
-.cond-bar {
-  flex: 1; display: grid; grid-template-columns: repeat(3, 1fr);
-  border: 1px solid var(--border-strong); border-radius: var(--r-sm); overflow: hidden;
+/* Condition gauge: gradient track + gliding marker + 3 condition zones.
+   Track red→amber→green via soft status tints (dark-aware); marker takes the
+   active zone's solid status colour. */
+.cond-block { display: flex; flex-direction: column; gap: 8px; }
+.cond-gauge { display: flex; flex-direction: column; gap: 6px; }
+.cond-track {
+  position: relative; height: 8px; border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: linear-gradient(90deg, var(--danger-soft) 0%, var(--warning-soft) 50%, var(--success-soft) 100%);
 }
+.cond-thumb {
+  position: absolute; top: 50%; left: 50%; width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--surface); background: var(--warning); box-shadow: var(--shadow-sm);
+  transform: translate(-50%, -50%);
+  transition: left .28s cubic-bezier(0.22, 1, 0.36, 1), background .2s ease;
+}
+.cond-gauge[data-pos="low"]  .cond-thumb { left: 16.667%; background: var(--danger); }
+.cond-gauge[data-pos="mid"]  .cond-thumb { left: 50%;     background: var(--warning); }
+.cond-gauge[data-pos="high"] .cond-thumb { left: 83.333%; background: var(--success); }
+.cond-bounds { display: flex; justify-content: space-between; }
+.cond-zones { display: grid; grid-template-columns: repeat(3, 1fr); }
 .cond-zone {
-  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
-  background: var(--surface); color: var(--text-muted);
-  border-right: 1px solid var(--border); padding: 7px 4px;
-  font: inherit; font-size: 12px; line-height: 1.15; text-align: center;
-  transition: background .12s ease, color .12s ease;
+  appearance: none; -webkit-appearance: none; border: 0; background: transparent; cursor: pointer;
+  color: var(--text-muted); padding: 7px 4px; font: inherit; font-size: 12px; line-height: 1.2;
+  text-align: center; border-radius: var(--r-sm); transition: color .12s ease;
 }
-.cond-zone:last-child { border-right: 0; }
-.cond-zone:hover { background: var(--surface-2); color: var(--text); }
-.cond-zone.is-active { background: var(--text); color: var(--surface); font-weight: 600; }
+.cond-zone:hover { color: var(--text); }
+.cond-zone.is-active { color: var(--text); font-weight: 600; }
 .cond-note { margin: 0; }
+@media (prefers-reduced-motion: reduce) { .cond-thumb { transition: none; } }
 .liked-estimate-amount { font-size: 14px; font-weight: 700; }
 .liked-estimate-range { display: block; font-size: 11.5px; }
 .bid-rationale-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }

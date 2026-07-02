@@ -16,14 +16,19 @@
            data-high="{{ estimate.high_fmt }}">{{ estimate.recommended_fmt }}</div>
     </div>
     <div class="cond-block">
-      <div class="cond-range">
-        <span class="bid-range-bound">{{ estimate.low_fmt }}</span>
-        <div class="cond-bar" role="group" aria-label="Condition of the home">
+      <div class="cond-gauge" data-cond-gauge data-pos="mid">
+        <div class="cond-track">
+          <span class="cond-thumb" aria-hidden="true"></span>
+        </div>
+        <div class="cond-bounds">
+          <span class="bid-range-bound">{{ estimate.low_fmt }}</span>
+          <span class="bid-range-bound">{{ estimate.high_fmt }}</span>
+        </div>
+        <div class="cond-zones" role="group" aria-label="Condition of the home">
           <button type="button" class="cond-zone" data-pos="low" aria-pressed="false">Needs work</button>
           <button type="button" class="cond-zone is-active" data-pos="mid" aria-pressed="true">Average</button>
           <button type="button" class="cond-zone" data-pos="high" aria-pressed="false">Good</button>
         </div>
-        <span class="bid-range-bound">{{ estimate.high_fmt }}</span>
       </div>
       <p class="cond-note text-muted small" data-cond-note>Pick the home's condition to place it in the range.</p>
     </div>
