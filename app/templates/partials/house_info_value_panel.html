@@ -68,6 +68,19 @@
   <p class="text-muted">
     We couldn't estimate a value for this address — not enough comparable sales nearby{% if not estimate.living_area %}, and its floor area isn't in the BAG registry{% endif %}.
   </p>
+  {% if estimate.living_area %}
+  {# Floor area is known, so this was a transient no-comps miss — offer a retry. #}
+  <div class="bid-card-actions">
+    <button class="btn btn-sm"
+            hx-post="/house-info/value-card/recompute?{{ qs }}"
+            hx-target="#house-info-value"
+            hx-swap="outerHTML"
+            hx-disabled-elt="this">
+      <span class="btn-label">Recalculate</span>
+      <span class="btn-spinner" aria-hidden="true"><span class="spinner-ring-sm"></span></span>
+    </button>
+  </div>
+  {% endif %}
 </div>
 {% else %}
 <div id="house-info-value" class="detail-section"
