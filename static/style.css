@@ -698,6 +698,26 @@ h2 { font-size: 16px; font-weight: 600; }
 .bid-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .bid-card-meta { margin: 0; }
 .bid-computing { font-style: italic; }
+
+/* Condition-on-the-bar: three highlighted zones placing the home in the range */
+.cond-block { display: flex; flex-direction: column; gap: 5px; }
+.cond-range { display: flex; align-items: stretch; gap: 10px; }
+.cond-range .bid-range-bound { align-self: center; }
+.cond-bar {
+  flex: 1; display: grid; grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm); overflow: hidden;
+}
+.cond-zone {
+  appearance: none; -webkit-appearance: none; border: 0; cursor: pointer;
+  background: var(--surface); color: var(--text-muted);
+  border-right: 1px solid var(--border); padding: 7px 4px;
+  font: inherit; font-size: 12px; line-height: 1.15; text-align: center;
+  transition: background .12s ease, color .12s ease;
+}
+.cond-zone:last-child { border-right: 0; }
+.cond-zone:hover { background: var(--surface-2); color: var(--text); }
+.cond-zone.is-active { background: var(--text); color: var(--surface); font-weight: 600; }
+.cond-note { margin: 0; }
 .liked-estimate-amount { font-size: 14px; font-weight: 700; }
 .liked-estimate-range { display: block; font-size: 11.5px; }
 .bid-rationale-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }

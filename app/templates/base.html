@@ -113,6 +113,35 @@
   </script>
 
   <script>
+  // Condition zones on the estimate bar: repositions the headline value within
+  // the comp-supported low–high band. Delegated so it survives HTMX swaps and
+  // works with several estimate cards on one page.
+  (function () {
+    var NOTES = {
+      low:  'Lower end of the range — for a home that needs work.',
+      mid:  'Mid estimate — average, move-in-ready condition.',
+      high: 'Upper end of the range — for an excellent or recently renovated home.'
+    };
+    document.addEventListener('click', function (e) {
+      var zone = e.target.closest('.cond-zone');
+      if (!zone) return;
+      var card = zone.closest('.bid-card');
+      if (!card) return;
+      var pos = zone.getAttribute('data-pos');
+      var amountEl = card.querySelector('[data-bid-amount]');
+      if (amountEl && amountEl.dataset[pos]) amountEl.textContent = amountEl.dataset[pos];
+      card.querySelectorAll('.cond-zone').forEach(function (z) {
+        var active = z === zone;
+        z.classList.toggle('is-active', active);
+        z.setAttribute('aria-pressed', active ? 'true' : 'false');
+      });
+      var noteEl = card.querySelector('[data-cond-note]');
+      if (noteEl && NOTES[pos]) noteEl.textContent = NOTES[pos];
+    });
+  })();
+  </script>
+
+  <script>
   (function () {
     var dismissed = localStorage.getItem('install-dismissed');
     if (dismissed && (Date.now() - parseInt(dismissed)) < 86400000) return;

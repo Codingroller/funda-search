@@ -4,14 +4,22 @@
   <div class="bid-card">
     <div class="bid-card-main">
       <div class="bid-card-label">Recommended bid</div>
-      <div class="bid-card-amount">{{ estimate.recommended_fmt }}</div>
+      <div class="bid-card-amount" data-bid-amount
+           data-low="{{ estimate.low_fmt }}"
+           data-mid="{{ estimate.recommended_fmt }}"
+           data-high="{{ estimate.high_fmt }}">{{ estimate.recommended_fmt }}</div>
     </div>
-    <div class="bid-card-range">
-      <span class="bid-range-bound">{{ estimate.low_fmt }}</span>
-      <div class="bid-range-track">
-        <div class="bid-range-fill"></div>
+    <div class="cond-block">
+      <div class="cond-range">
+        <span class="bid-range-bound">{{ estimate.low_fmt }}</span>
+        <div class="cond-bar" role="group" aria-label="Condition of the home">
+          <button type="button" class="cond-zone" data-pos="low" aria-pressed="false">Needs work</button>
+          <button type="button" class="cond-zone is-active" data-pos="mid" aria-pressed="true">Average</button>
+          <button type="button" class="cond-zone" data-pos="high" aria-pressed="false">Good</button>
+        </div>
+        <span class="bid-range-bound">{{ estimate.high_fmt }}</span>
       </div>
-      <span class="bid-range-bound">{{ estimate.high_fmt }}</span>
+      <p class="cond-note text-muted small" data-cond-note>Pick the home's condition to place the bid in the range.</p>
     </div>
     <div class="bid-card-confidence">
       {% if estimate.confidence == "low" %}
