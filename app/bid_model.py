@@ -11,7 +11,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-CURRENT_MODEL_VERSION = "v2.1"
+CURRENT_MODEL_VERSION = "v2.2"
 
 _ENERGY_ORDER = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]
 # has_plot is collinear with log_plot (+50 floor) and is_apartment, so the
