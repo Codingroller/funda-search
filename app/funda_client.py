@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
@@ -31,6 +32,8 @@ from app.db import AsyncSessionLocal
 from app.image_cache import cache_hero_sync, cache_photo_sync
 from app.models import ListingCache
 from app.time_utils import as_utc, now_utc
+
+logger = logging.getLogger(__name__)
 
 _pool = ThreadPoolExecutor(max_workers=4)
 _LISTING_TTL = timedelta(hours=24)
@@ -367,3 +370,75 @@ async def find_funda_listing(
         if _detail_confirms(detail, target):
             return detail
     return None
+
+
+# ── Funda search health canary ────────────────────────────────────────────────
+# The Funda search can break silently: on 2026-07-02 Funda re-indexed and the
+# pinned pyfunda search template started returning HTTP 200 with *zero* results
+# (no exception), quietly killing saved-query alerts and all bid/value estimates.
+# A broad "Amsterdam buy" search should never be empty, so we canary it and, on
+# consecutive failures, push an admin alert (once/24h) — mirroring the WOZ block
+# notification in woz_client._maybe_notify_block.
+_last_funda_block_notified: "datetime | None" = None  # noqa: F821 — set at runtime
+_funda_block_notify_interval = timedelta(hours=24)
+_funda_consecutive_failures = 0
+_FUNDA_FAILURE_THRESHOLD = 2   # consecutive empty canaries before alerting
+
+
+async def check_funda_health() -> None:
+    """Scheduled canary: a broad Funda search should always return listings.
+    Alerts admins if it comes back empty on consecutive runs."""
+    global _funda_consecutive_failures
+    try:
+        results = await search_listings({
+            "location": ["Amsterdam"], "category": "buy", "max_pages": 1,
+        })
+    except Exception as exc:
+        logger.warning("Funda health canary errored: %s", exc)
+        results = []
+
+    if results:
+        if _funda_consecutive_failures:
+            logger.info("Funda health canary recovered")
+        _funda_consecutive_failures = 0
+        return
+
+    _funda_consecutive_failures += 1
+    logger.warning("Funda health canary returned no results (%d consecutive)",
+                   _funda_consecutive_failures)
+    if _funda_consecutive_failures >= _FUNDA_FAILURE_THRESHOLD:
+        await _notify_funda_block()
+
+
+async def _notify_funda_block() -> None:
+    """Push an admin alert that Funda search appears broken (rate-limited 24h)."""
+    global _last_funda_block_notified
+    now = now_utc()
+    if _last_funda_block_notified and (now - _last_funda_block_notified) < _funda_block_notify_interval:
+        return
+    _last_funda_block_notified = now
+
+    try:
+        from sqlalchemy import select
+        from app.models import User
+        from app.notifier import notify_user
+
+        async with AsyncSessionLocal() as db:
+            admins = (await db.execute(
+                select(User).where(User.is_admin.is_(True))
+            )).scalars().all()
+
+        for admin in admins:
+            await notify_user(
+                admin.id,
+                title="Funda search appears broken",
+                body=(
+                    "A broad Funda search returned no results on consecutive checks. "
+                    "Saved-query alerts and bid/value estimates won't work until it's "
+                    "fixed — often a stale pyfunda search template after a Funda change."
+                ),
+                tag="funda-blocked",
+            )
+            logger.info("Funda-blocked notification sent to admin user_id=%d", admin.id)
+    except Exception as exc:
+        logger.warning("Failed to send Funda-blocked notification: %s", exc)

@@ -139,6 +139,7 @@ async def lifespan(app: FastAPI):
             await db.commit()
 
     from app.listing_status_checker import check_liked_listing_statuses
+    from app.funda_client import check_funda_health
 
     scheduler.start()
     await reconcile_jobs()
@@ -146,6 +147,10 @@ async def lifespan(app: FastAPI):
                       replace_existing=True)
     scheduler.add_job(check_liked_listing_statuses, "interval", hours=1,
                       id="check_listing_statuses", replace_existing=True,
+                      max_instances=1, coalesce=True)
+    # Canary: alert admins if Funda search silently starts returning nothing.
+    scheduler.add_job(check_funda_health, "interval", hours=1,
+                      id="check_funda_health", replace_existing=True,
                       max_instances=1, coalesce=True)
 
     yield

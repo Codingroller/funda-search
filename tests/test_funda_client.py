@@ -573,3 +573,78 @@ class TestFindFundaListing:
         with patch("app.funda_client._sync_find_candidates", side_effect=_capture):
             await find_funda_listing("1016 GV", 263, city="Amsterdam")
         assert captured["locs"] == ["1016", "Amsterdam"]
+
+
+# ---------------------------------------------------------------------------
+# check_funda_health — search canary + admin alert
+# ---------------------------------------------------------------------------
+
+import app.funda_client as fc  # noqa: E402
+
+
+@pytest.mark.asyncio
+class TestFundaHealthCanary:
+    async def test_success_resets_failures_no_alert(self, monkeypatch):
+        fc._funda_consecutive_failures = 5
+        calls = []
+
+        async def ok(params):
+            return [{"global_id": "1"}]
+
+        async def fake_notify():
+            calls.append(1)
+
+        monkeypatch.setattr(fc, "search_listings", ok)
+        monkeypatch.setattr(fc, "_notify_funda_block", fake_notify)
+        await fc.check_funda_health()
+
+        assert fc._funda_consecutive_failures == 0
+        assert calls == []
+
+    async def test_alerts_only_after_threshold(self, monkeypatch):
+        fc._funda_consecutive_failures = 0
+        calls = []
+
+        async def empty(params):
+            return []
+
+        async def fake_notify():
+            calls.append(1)
+
+        monkeypatch.setattr(fc, "search_listings", empty)
+        monkeypatch.setattr(fc, "_notify_funda_block", fake_notify)
+
+        await fc.check_funda_health()   # 1st failure — below threshold
+        assert calls == []
+        await fc.check_funda_health()   # 2nd failure — alert fires
+        assert calls == [1]
+
+    async def test_exception_counts_as_failure(self, monkeypatch):
+        fc._funda_consecutive_failures = 1
+        calls = []
+
+        async def boom(params):
+            raise RuntimeError("network down")
+
+        async def fake_notify():
+            calls.append(1)
+
+        monkeypatch.setattr(fc, "search_listings", boom)
+        monkeypatch.setattr(fc, "_notify_funda_block", fake_notify)
+        await fc.check_funda_health()   # reaches threshold 2 → alert
+
+        assert calls == [1]
+
+    async def test_notify_block_rate_limited(self, monkeypatch):
+        # Second call within the interval must be a no-op (no admin lookup).
+        fc._last_funda_block_notified = now_utc()
+        called = []
+
+        async def _should_not_run(*a, **k):
+            called.append(1)
+
+        # If the rate-limit guard fails, it would import + query admins; patching
+        # notify_user lets us assert it's never reached.
+        monkeypatch.setattr("app.notifier.notify_user", _should_not_run)
+        await fc._notify_funda_block()
+        assert called == []
