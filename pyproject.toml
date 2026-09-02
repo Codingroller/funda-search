@@ -17,9 +17,14 @@ dependencies = [
     "Pillow>=10",
     "argon2-cffi>=23",
     "httpx>=0.27",
-    # Pinned: 3.1.2 ships a broken _FundaTransport (won't construct). We stay on
-    # 3.1.1 and hotfix the stale search-template id in app/funda_client.py.
-    "pyfunda==3.1.1",
+    # Pinned: on 2026-08-18 Funda put auth on the mobile search API and every
+    # search started failing 401 "no token provided". 3.1.5 detects that 401 and
+    # falls back to funda.nl web search. Keep the pin exact — 3.1.2 shipped a
+    # broken _FundaTransport, so a newer pyfunda is not automatically safe.
+    "pyfunda==3.1.5",
+    # imported directly by app/image_cache.py (browser-impersonating
+    # image downloads); also a pyfunda dependency.
+    "curl-cffi>=0.14",
     "numpy>=1.26",
     "python-multipart>=0.0.9",
     "itsdangerous>=2.1",

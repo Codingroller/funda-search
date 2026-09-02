@@ -11,16 +11,15 @@ except ImportError:
     Funda = None  # type: ignore[assignment,misc]
     ListingNotFound = LookupError  # type: ignore[assignment,misc]
 
-# ── Funda search-template hotfix ──────────────────────────────────────────────
+# ── Funda search-template hotfix (inert on pyfunda >= 3.1.2) ─────────────────
 # pyfunda posts to Funda's server-side stored search template by id. On
 # 2026-07-02 Funda re-indexed (search-listings-prod-*) and dropped the
 # `placement_type` field, which the template pinned in pyfunda 3.1.1
-# ("search_result_20250805") still sorts on — so every search returns an
+# ("search_result_20250805") still sorts on — so every search returned an
 # Elasticsearch shard error and 0 results (breaking saved queries, bid comps,
-# and address value estimates). pyfunda 3.1.2 ships the current template id but
-# its _FundaTransport is broken (won't construct), so we can't upgrade. Instead
-# we bump just the one stale constant to the current template. Self-disables if
-# the installed library is ever updated past the stale id.
+# and address value estimates). We now run pyfunda 3.1.5, which ships this very
+# template id, so the guard below no-ops; it is kept only so a downgrade to
+# 3.1.1 still searches. Self-disables whenever the installed id is not stale.
 try:
     import funda.search as _funda_search
     if getattr(_funda_search, "SEARCH_TEMPLATE_ID", None) == "search_result_20250805":
@@ -72,12 +71,20 @@ def _listing_to_dict(listing) -> dict:
             photo_url = urls[0]
         else:
             # iter_search populates photo_ids but not photo_urls; construct URL from ID.
-            # '228898333' -> 'https://cloud.funda.nl/valentina_media/228/898/333_groot.jpg'
+            # Two id shapes exist: the mobile API returns a numeric valentina id
+            # ('228898333' -> .../valentina_media/228/898/333_groot.jpg), while the
+            # web-search fallback (pyfunda >= 3.1.5) returns a tiara-media *path*
+            # ('tiara-media/<uuid>/<uuid>') that is served straight off the CDN
+            # root with a width option. Splitting a path id into /nnn/nnn/nnn
+            # segments yields a 404, so branch on the shape.
             ids = getattr(media, "photo_ids", ())
             if ids:
                 pid = str(ids[0])
-                path = f"{pid[:-6]}/{pid[-6:-3]}/{pid[-3:]}" if len(pid) >= 9 else pid
-                photo_url = f"https://cloud.funda.nl/valentina_media/{path}_groot.jpg"
+                if "/" in pid:
+                    photo_url = f"https://cloud.funda.nl/{pid}?options=width=720"
+                else:
+                    path = f"{pid[:-6]}/{pid[-6:-3]}/{pid[-3:]}" if len(pid) >= 9 else pid
+                    photo_url = f"https://cloud.funda.nl/valentina_media/{path}_groot.jpg"
 
     # Upgrade any klein/medium CDN variant to groot (~720×540) so cache_photo_sync
     # downscales rather than upscaling, producing a sharper thumbnail.
