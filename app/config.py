@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject: str = "mailto:r.schoonen@rominiek.nl"
 
+    # Hourly Funda search canary (funda_client.check_funda_health). Paused by
+    # default; set FUNDA_HEALTH_CHECK_ENABLED=true to schedule it again.
+    funda_health_check_enabled: bool = False
+
     # Competitive-bid uplift: the model fits comparable *asking* prices, but Dutch
     # homes typically sell above asking, so a winning bid sits over the fitted fair
     # value. Rather than a flat percentage, the uplift is now *market-hotness aware*

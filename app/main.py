@@ -149,9 +149,11 @@ async def lifespan(app: FastAPI):
                       id="check_listing_statuses", replace_existing=True,
                       max_instances=1, coalesce=True)
     # Canary: alert admins if Funda search silently starts returning nothing.
-    scheduler.add_job(check_funda_health, "interval", hours=1,
-                      id="check_funda_health", replace_existing=True,
-                      max_instances=1, coalesce=True)
+    # Gated by FUNDA_HEALTH_CHECK_ENABLED (paused by default).
+    if settings.funda_health_check_enabled:
+        scheduler.add_job(check_funda_health, "interval", hours=1,
+                          id="check_funda_health", replace_existing=True,
+                          max_instances=1, coalesce=True)
 
     yield
 
